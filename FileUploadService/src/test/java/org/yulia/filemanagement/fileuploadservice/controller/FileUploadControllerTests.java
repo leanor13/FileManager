@@ -21,18 +21,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.mockito.BDDMockito.given;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = {
-        "api.base.path=/api",
-        "api.upload.endpoint=/files/upload",
-        "minio.bucket-name=test-bucket",
-        "metadata.response.timeout.ms=500"
-})
+@TestPropertySource(locations = "classpath:application.properties")
 public class FileUploadControllerTests {
 
     @Autowired
@@ -59,7 +55,8 @@ public class FileUploadControllerTests {
 
         given(fileUploadService.uploadFile(file)).willReturn(mockResult);
 
-        mockMvc.perform(multipart("/api/files/upload").file(file))
+        mockMvc.perform(multipart("/api/files/upload").file(file)
+                        .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isOk())
                 .andExpect(content().string("File uploaded successfully"));
     }
@@ -74,7 +71,8 @@ public class FileUploadControllerTests {
 
         given(fileUploadService.uploadFile(file)).willReturn(null);
 
-        mockMvc.perform(multipart("/api/files/upload").file(file))
+        mockMvc.perform(multipart("/api/files/upload").file(file)
+                        .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().string("Failed to upload file. Please try again later."));
     }
@@ -97,7 +95,8 @@ public class FileUploadControllerTests {
 
         given(fileUploadService.uploadFile(file)).willReturn(mockResult);
 
-        mockMvc.perform(multipart("/api/files/upload").file(file))
+        mockMvc.perform(multipart("/api/files/upload").file(file)
+                        .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().string("Failed to upload file. Please try again later."));
     }
@@ -120,7 +119,8 @@ public class FileUploadControllerTests {
 
         given(fileUploadService.uploadFile(file)).willReturn(mockResult);
 
-        mockMvc.perform(multipart("/api/files/upload").file(file))
+        mockMvc.perform(multipart("/api/files/upload").file(file)
+                        .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().string("Failed to upload file. Please try again later."));
     }
@@ -143,7 +143,8 @@ public class FileUploadControllerTests {
 
         given(fileUploadService.uploadFile(file)).willReturn(mockResult);
 
-        mockMvc.perform(multipart("/api/files/upload").file(file))
+        mockMvc.perform(multipart("/api/files/upload").file(file)
+                        .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string("Invalid file format"));
     }
@@ -166,7 +167,8 @@ public class FileUploadControllerTests {
 
         given(fileUploadService.uploadFile(file)).willReturn(mockResult);
 
-        mockMvc.perform(multipart("/api/files/upload").file(file))
+        mockMvc.perform(multipart("/api/files/upload").file(file)
+                        .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().string("Internal server error"));
     }
@@ -189,7 +191,8 @@ public class FileUploadControllerTests {
 
         given(fileUploadService.uploadFile(file)).willReturn(mockResult);
 
-        mockMvc.perform(multipart("/api/files/upload").file(file))
+        mockMvc.perform(multipart("/api/files/upload").file(file)
+                        .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().string("Internal error occurred"));
     }
@@ -225,12 +228,14 @@ public class FileUploadControllerTests {
 
         // Callable tasks for each file upload
         Callable<MvcResult> uploadFirstFile = () -> mockMvc.perform(multipart("/api/files/upload")
-                        .file(firstFile))
+                        .file(firstFile)
+                        .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isOk())
                 .andReturn();
 
         Callable<MvcResult> uploadSecondFile = () -> mockMvc.perform(multipart("/api/files/upload")
-                        .file(secondFile))
+                        .file(secondFile)
+                        .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isOk())
                 .andReturn();
 

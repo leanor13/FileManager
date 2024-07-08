@@ -1,7 +1,5 @@
 package org.yulia.filemanagement.fileuploadservice.controller;
 
-import okio.FileMetadata;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,11 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.yulia.filemanagement.fileuploadservice.dto.ErrorResponse;
-import org.yulia.filemanagement.fileuploadservice.dto.UploadResult;
 import org.yulia.filemanagement.fileuploadservice.service.FileUploadService;
 
-import java.util.List;
 import java.util.Map;
 
 import static org.yulia.filemanagement.fileuploadservice.constants.UserErrorMessages.FILE_UPLOAD_FAILED;
@@ -73,7 +68,7 @@ public class FileUploadController {
     public ResponseEntity<String> getFiles(@RequestParam Map<String, String> filters) {
         logger.info("Received request to get files with filters: {}", filters);
         try {
-            return fileUploadService.getFilesWithRetry(filters);
+            return fileUploadService.getFiles(filters);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             logger.error("Thread was interrupted during file retrieval retries.", e);

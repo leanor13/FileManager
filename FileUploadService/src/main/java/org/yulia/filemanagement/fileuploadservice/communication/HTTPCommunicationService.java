@@ -66,7 +66,6 @@ public class HTTPCommunicationService implements CommunicationService {
         }
     }
 
-
     @Override
     public void sendDeleteMessage(String fileName) {
         try {

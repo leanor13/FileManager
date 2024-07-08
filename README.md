@@ -252,9 +252,10 @@ sequenceDiagram
 ## Installation
 
 ### Clone the repository
+
 ```sh
-git clone //TODO
-cd // TODO
+git clone https://github.com/leanor13/FileManager.git
+cd FileManager
 ```
 
 ### Set up MinIO
@@ -295,7 +296,13 @@ How to run PostgreSQL using Docker
 Run PostgreSQL:
 
 ```sh
-docker run --name postgres -e POSTGRES_PASSWORD=postgres -p 5433:5432 -d postgres
+docker run --name postgres \
+  -e POSTGRES_PASSWORD=logic \ 
+  -e POSTGRES_USER=file_user \
+  -e POSTGRES_DB=file_management_db \
+  -p 5433:5432 \
+  -d postgres
+
 ```
 
 **if you want to use different PostgreSQL database, credentials or ports modify "connection to the database" section 

@@ -85,7 +85,6 @@ public class FileMetadataService {
         try {
             var spec = createSpecification(queryDto);
             var files = fileMetadataRepository.findAll(spec);
-            // TODO: move this parameter to FileUploadService
             if (!showFileUrl) {
                 files.forEach(file -> file.setFileUrl(null));
             }

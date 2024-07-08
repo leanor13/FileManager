@@ -236,17 +236,8 @@ sequenceDiagram
 ### Клонирование репозитория
 
 ```sh
-git clone //TODO: add link
-cd //TODO: add name
-```
-
-## Установка
-
-### Клонирование репозитория
-
-```
-git clone https://github.com/your-repo/project-name.git
-cd project-name
+git clone https://github.com/leanor13/FileManager.git
+cd FileManager
 ```
 
 ### Настройка MinIO
@@ -292,7 +283,12 @@ FileUploadService/src/main/resources/application.properties
 Запустите PostgreSQL:
 
 ```
-docker run --name postgres -e POSTGRES_PASSWORD=postgres -p 5433:5432 -d postgres
+docker run --name postgres \
+  -e POSTGRES_PASSWORD=logic \ 
+  -e POSTGRES_USER=file_user \
+  -e POSTGRES_DB=file_management_db \
+  -p 5433:5432 \
+  -d postgres
 ```
 
 **Если вы хотите использовать другую базу данных PostgreSQL, учетные данные или порты, измените соответствующие параметры в разделе "connection to the database" в:**

@@ -9,7 +9,6 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-//TODO: check if needed
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -23,11 +22,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleNoResourceFoundException(NoResourceFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No static resource found.");
     }
-
-//    @ExceptionHandler(AccessDeniedException.class)
-//    public ResponseEntity<String> handleAccessDeniedException(AccessDeniedException e) {
-//        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied. You do not have permission to access this resource.");
-//    }
 
     @ExceptionHandler(RestClientException.class)
     public ResponseEntity<String> handleRestClientException(RestClientException e) {
