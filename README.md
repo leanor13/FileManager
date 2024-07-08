@@ -331,9 +331,9 @@ Terminal 3:
 
 ### How to Use
 
-**Use the following credentials for basic authentication:**
-username: `any`
-password: `logic`
+**Use the following credentials for basic authentication:**  
+username: `any`  
+password: `logic`  
 
 #### Upload a file
 

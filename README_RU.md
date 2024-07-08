@@ -318,6 +318,10 @@ FileMetadataService/src/main/resources/application.properties
 
 ## Как использовать
 
+**Используйте следующие логин и пароль:**  
+username: `any`  
+password: `logic`  
+
 #### Загрузка файла
 
 Endpoint: `POST /api/files/upload`
