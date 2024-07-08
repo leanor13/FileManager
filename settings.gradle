@@ -1,0 +1,4 @@
+rootProject.name = 'FileManager'
+include 'EurekaServer'
+include 'FileUploadService'
+include 'FileMetadataService'
