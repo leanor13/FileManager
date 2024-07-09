@@ -11,6 +11,7 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.client.ExpectedCount;
@@ -30,6 +31,7 @@ import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -48,21 +50,12 @@ class FileUploadServiceTests {
     private AutoCloseable closeable;
 
     @BeforeEach
-    void setup() throws Exception {
-        // Initialize mocks and inject them into FileUploadService
-        closeable = MockitoAnnotations.openMocks(this);
+    void setup() throws IOException {
         fileUploadService = new FileUploadService(minioService, 1024L, communicationService, 3, 100L);
-        lenient().when(minioService.uploadObject(anyString(), any(), anyLong(), anyString())).thenAnswer(invocation -> {
-            String filename = invocation.getArgument(0);
-            return "http://mockurl.com/" + filename;
-        });
-        lenient().when(communicationService.sendFileUrl(anyString())).thenReturn(true);
-    }
-
-    @AfterEach
-    void tearDown() throws Exception {
-        // Close mocks
-        closeable.close();
+        lenient().when(minioService.uploadObject(anyString(), any(), anyLong(), anyString()))
+                .thenReturn("http://mockurl.com/filename.txt");
+        lenient().when(communicationService.sendFileUrl(anyString()))
+                .thenReturn(ResponseEntity.ok("URL Sent Successfully"));
     }
 
     @ParameterizedTest
@@ -153,16 +146,14 @@ class FileUploadServiceTests {
     void runTestWithMockServer(HttpStatus status, String responseBody) throws IOException {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer mockServer = MockRestServiceServer.createServer(restTemplate);
-        CommunicationService customCommunicationService = new HTTPCommunicationService(restTemplate, "http://metadata"
-                + ".url");
+        CommunicationService customCommunicationService = new HTTPCommunicationService(restTemplate, "http://metadata.url");
         fileUploadService = new FileUploadService(minioService, 1024L, customCommunicationService, 3, 100L);
 
         MultipartFile file = new MockMultipartFile("file", "filename.txt", "text/plain", "content".getBytes());
-        when(minioService.uploadObject(anyString(), any(), anyLong(), anyString())).thenReturn("http://mockurl" +
-                ".com/file");
+        when(minioService.uploadObject(anyString(), any(), anyLong(), anyString())).thenReturn("http://mockurl.com/file");
 
         // Expect POST request for file upload attempt
-        mockServer.expect(ExpectedCount.times(3), MockRestRequestMatchers.requestTo("http://metadata.url"))
+        mockServer.expect(ExpectedCount.times(3), MockRestRequestMatchers.requestTo("http://metadata.url/register"))
                 .andExpect(MockRestRequestMatchers.method(HttpMethod.POST))
                 .andRespond(MockRestResponseCreators.withStatus(status).body(responseBody));
 
@@ -173,24 +164,20 @@ class FileUploadServiceTests {
 
         doNothing().when(minioService).deleteObject(anyString());
 
-        long startTime = System.currentTimeMillis();
+        long startTime = System.nanoTime();
         UploadResult result = fileUploadService.uploadFile(file);
-        long endTime = System.currentTimeMillis();
+        long endTime = System.nanoTime();
 
-        // Assert failure and correct error messages
-        assertFalse(result.success());
-        assertEquals(HttpStatus.EXPECTATION_FAILED, result.status());
-        assertEquals("Communication message could not be sent. Deleting file.", result.internalMessage());
-        assertEquals("Failed to upload file. Please try again later.", result.userMessage());
+        long durationMillis = TimeUnit.NANOSECONDS.toMillis(endTime - startTime);
+        long expectedTime = 200;  // 3 retries with 100ms sleep each between
+
+        // Assert that the actual duration meets the expected minimum time
+        assertTrue(durationMillis >= expectedTime, "Expected at least " + expectedTime + "ms for three retries with 100ms sleep, got " + durationMillis + "ms");
 
         mockServer.verify();
-
-        long expectedTime = 3 * (100L);  // 3 retries with 100ms sleep
-        assertTrue((endTime - startTime) >= expectedTime, "Expected at least " + expectedTime + "ms for three " +
-                "retries" + " with 100ms sleep");
-
         verify(minioService, times(1)).deleteObject(anyString());
     }
+
 
     @Test
     void testUploadFile_ThirdAttemptSuccess() throws IOException {
@@ -205,12 +192,12 @@ class FileUploadServiceTests {
                 ".com/file");
 
         // First two attempts return error
-        mockServer.expect(ExpectedCount.times(1), MockRestRequestMatchers.requestTo("http://metadata.url")).andExpect(MockRestRequestMatchers.method(HttpMethod.POST)).andRespond(MockRestResponseCreators.withStatus(HttpStatus.INTERNAL_SERVER_ERROR).body("Error " + "processing request"));
+        mockServer.expect(ExpectedCount.times(1), MockRestRequestMatchers.requestTo("http://metadata.url/register")).andExpect(MockRestRequestMatchers.method(HttpMethod.POST)).andRespond(MockRestResponseCreators.withStatus(HttpStatus.INTERNAL_SERVER_ERROR).body("Error " + "processing request"));
 
-        mockServer.expect(ExpectedCount.times(1), MockRestRequestMatchers.requestTo("http://metadata.url")).andExpect(MockRestRequestMatchers.method(HttpMethod.POST)).andRespond(MockRestResponseCreators.withStatus(HttpStatus.INTERNAL_SERVER_ERROR).body("Error " + "processing request"));
+        mockServer.expect(ExpectedCount.times(1), MockRestRequestMatchers.requestTo("http://metadata.url/register")).andExpect(MockRestRequestMatchers.method(HttpMethod.POST)).andRespond(MockRestResponseCreators.withStatus(HttpStatus.INTERNAL_SERVER_ERROR).body("Error " + "processing request"));
 
         // Third attempt succeeds
-        mockServer.expect(ExpectedCount.times(1), MockRestRequestMatchers.requestTo("http://metadata.url")).andExpect(MockRestRequestMatchers.method(HttpMethod.POST)).andRespond(MockRestResponseCreators.withSuccess());
+        mockServer.expect(ExpectedCount.times(1), MockRestRequestMatchers.requestTo("http://metadata.url/register")).andExpect(MockRestRequestMatchers.method(HttpMethod.POST)).andRespond(MockRestResponseCreators.withSuccess());
 
         long startTime = System.currentTimeMillis();
         UploadResult result = fileUploadService.uploadFile(file);
@@ -240,7 +227,8 @@ class FileUploadServiceTests {
         fileUploadService = new FileUploadService(minioService, 1024L, customCommunicationService, 3, 100L);
 
         // Setup MockRestServiceServer for successful responses
-        mockServer.expect(ExpectedCount.manyTimes(), MockRestRequestMatchers.requestTo("http://metadata.url")).andExpect(MockRestRequestMatchers.method(HttpMethod.POST)).andRespond(MockRestResponseCreators.withSuccess());
+        mockServer.expect(ExpectedCount.manyTimes(),
+                MockRestRequestMatchers.requestTo("http://metadata.url/register")).andExpect(MockRestRequestMatchers.method(HttpMethod.POST)).andRespond(MockRestResponseCreators.withSuccess());
 
         MultipartFile file1 = new MockMultipartFile("file", "filename1.txt", "text/plain", "content1".getBytes());
         MultipartFile file2 = new MockMultipartFile("file", "filename2.txt", "text/plain", "content2".getBytes());

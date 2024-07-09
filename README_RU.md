@@ -236,17 +236,8 @@ sequenceDiagram
 ### Клонирование репозитория
 
 ```sh
-git clone //TODO: add link
-cd //TODO: add name
-```
-
-## Установка
-
-### Клонирование репозитория
-
-```
-git clone https://github.com/your-repo/project-name.git
-cd project-name
+git clone https://github.com/leanor13/FileManager.git
+cd FileManager
 ```
 
 ### Настройка MinIO
@@ -292,7 +283,12 @@ FileUploadService/src/main/resources/application.properties
 Запустите PostgreSQL:
 
 ```
-docker run --name postgres -e POSTGRES_PASSWORD=postgres -p 5433:5432 -d postgres
+docker run --name postgres \
+  -e POSTGRES_PASSWORD=logic \ 
+  -e POSTGRES_USER=file_user \
+  -e POSTGRES_DB=file_management_db \
+  -p 5433:5432 \
+  -d postgres
 ```
 
 **Если вы хотите использовать другую базу данных PostgreSQL, учетные данные или порты, измените соответствующие параметры в разделе "connection to the database" в:**
@@ -322,18 +318,26 @@ FileMetadataService/src/main/resources/application.properties
 
 ## Как использовать
 
+**Используйте следующие логин и пароль:**  
+username: `any`  
+password: `logic`  
+
+Чтобы использовать пароль через curl:
+```sh
+echo -n "any:logic" | base64
+```
+
+
 #### Загрузка файла
 
 Endpoint: `POST /api/files/upload`
 
 Запрос:
 
-```
-curl -X POST "http://localhost:8081/api/files/upload" \
--H "accept: application/json" \
--H "Content-Type: multipart/form-data" \
--H "Authorization: Basic $(echo -n "<username>:<password>" | base64)" \
--F "file=@<path-to-your-file>"
+```sh
+curl -X POST 'http://localhost:8081/api/files/upload' \
+-u <login>:<password> \
+--form 'file=@"<path_to_file>"'
 ```
 
 #### Получение списка загруженных файлов
@@ -350,47 +354,47 @@ Endpoint: `GET /api/files`
 
 Пример запроса:
 
-```
-curl -X GET "http://localhost:8082/api/metadata?file_type=image/png&min_size=1024&max_size=2048&size_unit=KB" \
--H "accept: application/json" \
--H "Authorization: Basic $(echo -n "<username>:<password>" | base64)"
+```sh
+curl -X GET "http://localhost:8081/api/files?file_type=image/png&min_size=1024&max_size=2048&size_unit=KB" \
+-u <login>:<password> \
+-H "accept: application/json"
 ```
 
 ### Примеры фильтрации
 
 1. **Фильтрация по типу файла**
-   ```
+   ```sh
    curl -X GET "http://localhost:8081/api/files?file_type=image/png" \
-   -H "accept: application/json" \
-   -H "Authorization: Basic $(echo -n "<username>:<password>" | base64)"
+   -u <login>:<password> \
+   -H "accept: application/json"
    ```
 
 2. **Фильтрация по минимальному размеру файла**
-   ```
+   ```sh
    curl -X GET "http://localhost:8081/api/files?min_size=1024" \
-   -H "accept: application/json" \
-   -H "Authorization: Basic $(echo -n "<username>:<password>" | base64)"
+   -u <login>:<password> \
+   -H "accept: application/json"
    ```
 
 3. **Фильтрация по максимальному размеру файла**
-   ```
+   ```sh
    curl -X GET "http://localhost:8081/api/files?max_size=2048" \
-   -H "accept: application/json" \
-   -H "Authorization: Basic $(echo -n "<username>:<password>" | base64)"
+   -u <login>:<password> \
+   -H "accept: application/json"
    ```
 
 4. **Фильтрация по точному размеру файла**
    ```
    curl -X GET "http://localhost:8081/api/files?equal_size=512" \
-   -H "accept: application/json" \
-   -H "Authorization: Basic $(echo -n "<username>:<password>" | base64)"
+   -u <login>:<password> \
+   -H "accept: application/json"
    ```
 
 5. **Фильтрация по единицам размера файла (КБ)**
    ```
-   curl -X GET "http://localhost:8081/api/files?min_size=1&max_size=2&size_unit=KB" \
+   curl -X GET "http://localhost:8081/api/files?min_size=1&max_size=250&size_unit=KB" \
    -H "accept: application/json" \
-   -H "Authorization: Basic $(echo-n "<username>:<password>" | base64)"
+   -H "Authorization: Basic YW55OmxvZ2lj"
    ```
 
 ## Параметры конфигурации

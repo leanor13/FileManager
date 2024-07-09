@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.yulia.filemanagement.fileuploadservice.constants.InternalErrorMessages.*;
 import static org.yulia.filemanagement.fileuploadservice.constants.SuccessMessages.FILE_UPLOAD_SUCCESS;
@@ -65,13 +66,18 @@ public class FileUploadService {
                     file.getSize(), file.getContentType());
             logger.info("File uploaded to Minio: {}", fileUrl);
 
-            // Checking if attempt to send file URL to MetadataService was successful
-            if (!sendUrlWithRetry(fileUrl).getStatusCode().is2xxSuccessful()) {
+            // Sending file URL to MetadataService
+            ResponseEntity<String> response = performRequestWithRetry(() -> communicationService.sendFileUrl(fileUrl));
+
+            // If the response is not successful, delete the file from Minio and send a delete message to MetadataService
+            if (!response.getStatusCode().is2xxSuccessful()) {
                 var fileName = file.getOriginalFilename();
 
                 logger.error("Failed to send file {} URL after {} retries, deleting file from Minio: {}",
                         fileName, maxRetries, fileUrl);
+                // delete from MinIO
                 minioService.deleteObject(fileName);
+                // send delete message to MetadataService - sending once since it's just a protection mechanism
                 communicationService.sendDeleteMessage(fileName);
                 logger.info("Sent request to delete from MetadataService file name: {}", fileName);
                 return new UploadResult(false, FILE_UPLOAD_FAILED, COMMUNICATION_MESSAGE_FAILURE,
@@ -97,31 +103,8 @@ public class FileUploadService {
      *         retries are performed until successful or all retries are exhausted. For client errors, it returns immediately with the error.
      * @throws InterruptedException if the thread is interrupted during sleep between retries, maintaining proper handling of thread interruption.
      */
-    public ResponseEntity<String> getFilesWithRetry(Map<String, String> filters) throws InterruptedException {
-        int retries = maxRetries;
-
-        while (retries > 0) {
-            ResponseEntity<String> response = communicationService.getFiles(filters);
-            if (response.getStatusCode().is2xxSuccessful()) {
-                logger.info("Successfully retrieved files on attempt: {}", maxRetries - retries + 1);
-                return ResponseEntity.ok(response.getBody());
-            } else {
-                if (response.getStatusCode().is4xxClientError()) {
-                    logger.error("Client error received: {}, stopping retries.", response.getStatusCode());
-                    return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
-                }
-
-                if (retries > 1) {
-                    logger.warn("Server error received: {}. Retrying... Attempts left: {}", response.getStatusCode(), retries - 1);
-                    Thread.sleep(sleepBetweenRetries);
-                } else {
-                    logger.error("Failed to retrieve files after all retries. Last received status: {}", response.getStatusCode());
-                }
-            }
-            retries--;
-        }
-        // If all retries are exhausted without success, return a service unavailable error
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("{\"error\":\"Service unavailable after multiple retries.\"}");
+    public ResponseEntity<String> getFiles(Map<String, String> filters) throws InterruptedException {
+        return performRequestWithRetry(() -> communicationService.getFiles(filters));
     }
 
     /**
@@ -175,14 +158,13 @@ public class FileUploadService {
         return new UploadResult(false, FILE_UPLOAD_FAILED, errorMessage, status, Optional.empty());
     }
 
-
-    private ResponseEntity<String> sendUrlWithRetry(String fileUrl) throws InterruptedException {
+    private ResponseEntity<String> performRequestWithRetry(Supplier<ResponseEntity<String>> requestSupplier) throws InterruptedException {
         int retries = maxRetries;
 
         while (retries > 0) {
-            ResponseEntity<String> response = communicationService.sendFileUrl(fileUrl);
+            ResponseEntity<String> response = requestSupplier.get();
             if (response.getStatusCode().is2xxSuccessful()) {
-                logger.info("Successfully sent file URL on attempt: {}", maxRetries - retries + 1);
+                logger.info("Successfully completed request on attempt: {}", maxRetries - retries + 1);
                 return ResponseEntity.ok(response.getBody());
             } else {
                 if (response.getStatusCode().is4xxClientError()) {
@@ -194,7 +176,7 @@ public class FileUploadService {
                     logger.warn("Server error received: {}. Retrying... Attempts left: {}", response.getStatusCode(), retries - 1);
                     Thread.sleep(sleepBetweenRetries);
                 } else {
-                    logger.error("Failed to send file URL after all retries. Last received status: {}", response.getStatusCode());
+                    logger.error("Failed to complete request after all retries. Last received status: {}", response.getStatusCode());
                 }
             }
             retries--;
@@ -202,7 +184,6 @@ public class FileUploadService {
         // If all retries are exhausted without success, return a service unavailable error
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("{\"error\":\"Service unavailable after multiple retries.\"}");
     }
-
 }
 
 

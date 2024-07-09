@@ -19,7 +19,6 @@ import org.yulia.filemanagement.filemetadataservice.service.FileMetadataService;
 
 import java.util.List;
 
-// TODO - add errors to errors in JSON response
 @RestController
 @RequestMapping("/api/metadata")
 @Validated
@@ -66,12 +65,17 @@ public class FileMetadataController {
 
     @DeleteMapping("/delete")
     public ResponseEntity<?> deleteFileMetadata(@RequestParam @NotNull String fileName) {
-        if (fileMetadataService.deleteFileMetadata(fileName)) {
-            var response = new SuccessResponse("Metadata for file '" + fileName + "' deleted successfully.", null);
-            return ResponseEntity.ok(response);
-        } else {
-            var errorResponse = new ErrorResponse("Metadata for file '" + fileName + "' not found.");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        try {
+            if (fileMetadataService.deleteFileMetadata(fileName)) {
+                var response = new SuccessResponse("Metadata for file '" + fileName + "' deleted successfully.", null);
+                return ResponseEntity.ok(response);
+            } else {
+                var errorResponse = new ErrorResponse("Metadata for file '" + fileName + "' not found.");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
+        } catch (Exception e) {
+            var errorResponse = new ErrorResponse("Error deleting metadata for file '" + fileName + "'.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
 

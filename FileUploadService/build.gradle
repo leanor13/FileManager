@@ -5,6 +5,7 @@ dependencies {
 	implementation 'javax.annotation:javax.annotation-api:1.3.2'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-web'
+	testImplementation 'org.springframework.security:spring-security-test'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	implementation 'io.minio:minio:8.4.6'
