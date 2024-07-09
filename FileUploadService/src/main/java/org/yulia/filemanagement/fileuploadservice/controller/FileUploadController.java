@@ -36,7 +36,8 @@ public class FileUploadController {
 
     @PostMapping("/upload")
     @Operation(summary = "Upload multiple files",
-            description = "Processes the upload of multiple files sent in a multipart request. " +
+            description = "FOR TESTING THIS API USE POSTMAN OR CURL" +
+                    "Processes the upload of multiple files sent in a multipart request. " +
                     "Each file is processed individually and the method returns a detailed result for each file upload, " +
                     "including status and messages.")
     @ApiResponses(value = {
