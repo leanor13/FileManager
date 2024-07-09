@@ -22,6 +22,7 @@ import org.yulia.filemanagement.fileuploadservice.config.SecurityConfig;
 import org.yulia.filemanagement.fileuploadservice.service.FileUploadService;
 import org.yulia.filemanagement.fileuploadservice.service.MinioService;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -187,6 +188,48 @@ public class FileUploadIntegrationControllerTests {
         verify(communicationService).sendDeleteMessage("file1.txt");
         verify(communicationService).sendDeleteMessage("file2.txt");
         verify(communicationService).sendDeleteMessage("file3.txt");
+    }
+
+    @Test
+    public void testUploadThreeFilesWithMixedResults() throws Exception {
+        // Set up file mocks
+        MockMultipartFile successFile = new MockMultipartFile("file", "success.txt", MediaType.TEXT_PLAIN_VALUE, "successful content".getBytes());
+        MockMultipartFile failFile4xx = new MockMultipartFile("file", "fail4xx.txt", MediaType.TEXT_PLAIN_VALUE, "fail content 4xx".getBytes());
+        MockMultipartFile failFile5xx = new MockMultipartFile("file", "fail5xx.txt", MediaType.TEXT_PLAIN_VALUE, "fail content 5xx".getBytes());
+
+        // Mock successful Minio uploads
+        given(minioService.uploadObject(anyString(), any(), anyLong(), anyString()))
+                .willReturn("http://minio.com/success.txt")
+                .willReturn("http://minio.com/fail4xx.txt")
+                .willReturn("http://minio.com/fail5xx.txt");
+
+        // Mock CommunicationService interactions
+        given(communicationService.sendFileUrl("http://minio.com/success.txt")).willReturn(ResponseEntity.ok("Uploaded"));
+        given(communicationService.sendFileUrl("http://minio.com/fail4xx.txt")).willReturn(ResponseEntity.badRequest().body("{\"error\":\"Client error\"}"));
+        given(communicationService.sendFileUrl("http://minio.com/fail5xx.txt")).willReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Server error\"}"));
+
+        // Perform the upload test
+        mockMvc.perform(multipart("/api/files/upload")
+                        .file(successFile).file(failFile4xx).file(failFile5xx)
+                        .with(httpBasic("test_user", "test_password"))
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isMultiStatus())
+                .andExpect(jsonPath("$[*].status", containsInAnyOrder(200, 400, 503)));
+
+        // Verify interactions with MinioService
+        verify(minioService, times(3)).uploadObject(anyString(), any(), anyLong(), anyString());
+
+        // Verify deletion of failed uploads
+        verify(minioService).deleteObject("fail4xx.txt");
+        verify(minioService).deleteObject("fail5xx.txt");
+
+        // Verify sending of delete messages for failed uploads
+        verify(communicationService).sendDeleteMessage("fail4xx.txt");
+        verify(communicationService).sendDeleteMessage("fail5xx.txt");
+
+        // Ensure no deletions or messages for successful upload
+        verify(minioService, never()).deleteObject("success.txt");
+        verify(communicationService, never()).sendDeleteMessage("success.txt");
     }
 
 }
