@@ -6,6 +6,11 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * Entity class representing metadata for a file stored in the system.
+ * This class includes details such as file URL, name, type, size, and upload date.
+ * It is annotated with JPA annotations for ORM mapping.
+ */
 @Setter
 @Getter
 @Entity

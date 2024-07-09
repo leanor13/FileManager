@@ -12,6 +12,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
+/**
+ * Service class for extracting metadata from files stored in a MinIO bucket.
+ */
 @Service
 public class FileMetadataExtractor {
 
@@ -43,11 +46,14 @@ public class FileMetadataExtractor {
      * @param bucketName the name of the MinIO bucket
      * @param fileUrl    the URL of the file to extract metadata from
      * @return FileMetadata containing the extracted data
+     * Note: The returned URL is cleaned of all query parameters. If you need the full URL with query parameters,
+     * consider using the MinIO URL generator method.
      */
     public FileMetadata extractMetadata(String bucketName, String fileUrl) {
         validateInputs(fileUrl, bucketName);
 
         try {
+            // clean the URL to remove any query parameters
             String cleanUrl = fileUrl.split("\\?")[0];
             String fileName = extractName(fileUrl);
 
@@ -80,10 +86,12 @@ public class FileMetadataExtractor {
         }
     }
 
+    // if the file type is not available, set it to "unknown"
     private String determineFileType(String fileType) {
         return fileType != null ? fileType : "unknown";
     }
 
+    // if there is no Upload Date in MinIO, set it to the current date and time
     private LocalDateTime determineUploadDate(ZonedDateTime lastModifiedDate) {
         if (lastModifiedDate != null) {
             return lastModifiedDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
@@ -92,6 +100,7 @@ public class FileMetadataExtractor {
         }
     }
 
+    // create a new FileMetadata object with the extracted metadata
     private FileMetadata createFileMetadata(String fileUrl, String fileName, String fileType, long fileSize,
                                             LocalDateTime uploadDate) {
         FileMetadata metadata = new FileMetadata();
@@ -103,6 +112,7 @@ public class FileMetadataExtractor {
         return metadata;
     }
 
+    // handle MinIO exceptions and convert them to runtime exceptions
     private RuntimeException handleMinioException(Exception e) {
         if (e instanceof InvalidResponseException) {
             logger.error("Security or response format error: {}", e.getMessage());

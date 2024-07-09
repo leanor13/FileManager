@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.yulia.filemanagement.fileuploadservice.service.FileUploadService;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.yulia.filemanagement.fileuploadservice.constants.UserErrorMessages.FILE_UPLOAD_FAILED;
@@ -28,19 +29,34 @@ public class FileUploadController {
 
     /**
      * Handles the file upload request.
+     * Note: Currently, only one file at a time is supported.
      *
-     * @param file the file to be uploaded
-     * @return ResponseEntity with the upload result
+     * @param files the list of files to be uploaded; only one file allowed
+     * @return ResponseEntity with the upload result or error message
      */
     @PostMapping("/upload")
-    public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) {
-        logger.info("Received file upload request: {}", file.getOriginalFilename());
+    public ResponseEntity<?> uploadFile(@RequestPart("file") List<MultipartFile> files) {
+
+        logger.info("Received file upload request");
+
+        // Validate file upload
+        ResponseEntity<?> validationResult = validateFileUpload(files);
+        if (validationResult != null) {
+            return validationResult;
+        }
+
+        MultipartFile file = files.getFirst();
+
+        if (file.isEmpty()) {
+            logger.warn("Uploaded file is empty."); // Log warning
+            return ResponseEntity.badRequest().body("The file is empty. Please select a non-empty file to upload.");
+        }
 
         var result = fileUploadService.uploadFile(file);
 
         if (result == null || result.userMessage() == null || result.status() == null) {
             logger.error("File upload failed due to internal server error."); // Log error
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(FILE_UPLOAD_FAILED);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("File upload failed due to server error.");
         }
 
         if (result.success()) {
@@ -51,6 +67,7 @@ public class FileUploadController {
             return ResponseEntity.status(result.status()).body(result.userMessage());
         }
     }
+
 
     /**
      * Handles HTTP GET requests to retrieve a list of files with specified filters.
@@ -75,5 +92,20 @@ public class FileUploadController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to retrieve files due to interruption.");
         }
     }
+
+    private ResponseEntity<?> validateFileUpload(List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            logger.warn("File upload request does not contain 'file' parameter or file was not attached.");
+            return ResponseEntity.badRequest().body("File parameter 'file' is missing or no file was attached. Please attach a file with the parameter 'file'.");
+        }
+
+        if (files.size() != 1) {
+            logger.warn("Multiple files detected. Only one file upload is allowed.");
+            return ResponseEntity.badRequest().body("Please upload only one file at a time.");
+        }
+
+        return null; // Return null to indicate that validation passed
+    }
+
 
 }

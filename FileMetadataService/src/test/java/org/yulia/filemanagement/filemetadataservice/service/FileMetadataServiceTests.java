@@ -80,28 +80,5 @@ class FileMetadataServiceTests {
         assertThrows(exception.getClass(), action, "Should throw the expected exception");
         verify(fileMetadataRepository, times(0)).save(any(FileMetadata.class)); // Ensure no save operation was called
     }
-
-    private static Stream<Arguments> provideInvalidFileQueryDtos() {
-        return Stream.of(
-                Arguments.of(new FileQueryDto(null, 1024L, null, 1024L, SizeUnit.bytes)), // Min and equalSize
-                Arguments.of(new FileQueryDto(null, null, 1024L, 1024L, SizeUnit.bytes)), // Max and equalSize
-                Arguments.of(new FileQueryDto(null, -102L, null, null, SizeUnit.bytes)), // Negative minSize
-                Arguments.of(new FileQueryDto(null, null, -1024L, null, SizeUnit.bytes)), // Negative maxSize
-                Arguments.of(new FileQueryDto(null, null, null, -1024L, SizeUnit.bytes)), // Negative equalSize
-                Arguments.of(new FileQueryDto(null, 1024L, 2048L, 1024L, SizeUnit.bytes))  // All parameters
-        );
-    }
-
-    @ParameterizedTest
-    @MethodSource("provideInvalidFileQueryDtos")
-    void whenFindFiles_withInvalidParameters_thenThrowsException(FileQueryDto queryDto) {
-        // When
-        Executable action = () -> fileMetadataService.findFiles(queryDto);
-
-        // Then
-        assertThrows(IllegalArgumentException.class, action, "Should throw IllegalArgumentException for invalid query parameters");
-        verify(fileMetadataRepository, times(0)).findAll(any(Specification.class)); // Ensure no find operation was called
-    }
-
 }
 

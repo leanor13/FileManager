@@ -20,8 +20,6 @@ import static org.yulia.filemanagement.fileuploadservice.constants.InternalError
 import static org.yulia.filemanagement.fileuploadservice.constants.SuccessMessages.FILE_UPLOAD_SUCCESS;
 import static org.yulia.filemanagement.fileuploadservice.constants.UserErrorMessages.*;
 
-
-// TODO: take out retry method
 @Service
 public class FileUploadService {
 

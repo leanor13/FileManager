@@ -20,6 +20,9 @@ import org.yulia.filemanagement.filemetadataservice.repository.FileMetadataRepos
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Service class for managing file metadata.
+ */
 @Service
 public class FileMetadataService {
 
@@ -41,6 +44,12 @@ public class FileMetadataService {
         this.showFileUrl = showFileUrl;
     }
 
+    /**
+     * Registers a file by extracting its metadata and saving it to the repository.
+     *
+     * @param fileUrlDto the DTO containing the URL of the file to register
+     * @throws IllegalArgumentException if the fileUrlDto, fileUrl, or bucketName is null
+     */
     public void registerFile(FileUrlDto fileUrlDto) {
         if (fileUrlDto == null || fileUrlDto.fileUrl() == null || bucketName == null) {
             throw new IllegalArgumentException("File URL, FileUrlDto, and bucket name cannot be null");
@@ -69,18 +78,17 @@ public class FileMetadataService {
                 fileMetadataRepository.save(metadata);
                 logger.info("File registered successfully: {}", fileName);
             }
-        } catch (IllegalArgumentException ex) {
-            logger.error("Illegal argument exception: {}", ex.getMessage());
-            throw new IllegalArgumentException("Illegal argument exception when retrieving files", ex);
-        } catch (DataAccessException ex) {
-            logger.error("Database error during file registration: {}", ex.getMessage());
-            throw new RuntimeException("Database error during file registration", ex);
         } catch (Exception ex) {
-            logger.error("Unexpected error during file registration: {}", ex.getMessage());
-            throw new RuntimeException("Unexpected error during file registration", ex);
+            handleException(ex, "Error during file registration for URL: " + fileUrl);
         }
     }
 
+    /**
+     * Finds files based on the specified query criteria.
+     *
+     * @param queryDto the DTO containing the query criteria
+     * @return a list of FileMetadata objects that match the query criteria
+     */
     public List<FileMetadata> findFiles(FileQueryDto queryDto) {
         try {
             var spec = createSpecification(queryDto);
@@ -89,18 +97,27 @@ public class FileMetadataService {
                 files.forEach(file -> file.setFileUrl(null));
             }
             return files;
-        } catch (IllegalArgumentException ex) {
-            logger.error("Illegal argument exception when retrieving files: {}", ex.getMessage());
-            throw ex;
-        } catch (DataAccessException ex) {
-            logger.error("Database error when retrieving files: {}", ex.getMessage(), ex);
-            throw new RuntimeException("Database error when retrieving files", ex);
         } catch (Exception ex) {
-            logger.error("Unexpected error when retrieving files: {}", ex.getMessage(), ex);
-            throw new RuntimeException("Unexpected error when retrieving files", ex);
+            handleException(ex, "Error during file retrieval with query: " + queryDto);
+            return null;
         }
     }
 
+    /**
+     * Deletes metadata for a file by its name.
+     *
+     * @param fileName the name of the file whose metadata is to be deleted
+     * @return true if the metadata was deleted successfully, false otherwise
+     */
+    @Transactional
+    public boolean deleteFileMetadata(String fileName) {
+        var countBefore = fileMetadataRepository.count();
+        fileMetadataRepository.deleteByFileName(fileName);
+        var countAfter = fileMetadataRepository.count();
+        return countBefore > countAfter;
+    }
+
+    // Create a specification for querying file metadata based on the provided criteria
     private Specification<FileMetadata> createSpecification(FileQueryDto queryDto) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -113,6 +130,7 @@ public class FileMetadataService {
         };
     }
 
+    // Handle size parameters for the query. Parameter validation is done in the controller.
     private void handleSizeParameters(FileQueryDto queryDto, List<Predicate> predicates,
                                       CriteriaBuilder criteriaBuilder, Root<FileMetadata> root) {
         var minSize = queryDto.minSize() != null ? convertSizeToBytes(queryDto.minSize(),
@@ -121,8 +139,6 @@ public class FileMetadataService {
                 queryDto.sizeUnit()) : null;
         var equalSize = queryDto.equalSize() != null ? convertSizeToBytes(queryDto.equalSize(),
                 queryDto.sizeUnit()) : null;
-
-        //validateSizeParameters(minSize, maxSize, equalSize);
 
         if (equalSize != null) {
             predicates.add(criteriaBuilder.equal(root.get("fileSize"), equalSize));
@@ -136,18 +152,7 @@ public class FileMetadataService {
         }
     }
 
-//    private void validateSizeParameters(Long minSize, Long maxSize, Long equalSize) {
-//        if (equalSize != null && (minSize != null || maxSize != null)) {
-//            throw new IllegalArgumentException("Cannot specify equalSize with minSize or maxSize");
-//        }
-//        if (minSize != null && maxSize != null && minSize > maxSize) {
-//            throw new IllegalArgumentException("minSize cannot be greater than maxSize");
-//        }
-//        if ((minSize != null && minSize < 0) || (maxSize != null && maxSize < 0) || (equalSize != null && equalSize < 0)) {
-//            throw new IllegalArgumentException("Size parameters cannot be negative");
-//        }
-//    }
-
+    // Convert size to bytes based on the specified size unit
     private long convertSizeToBytes(Long size, SizeUnit sizeUnit) {
         if (size == null) {
             return 0;  // If no size is provided, return 0 which implies no size restriction
@@ -161,12 +166,17 @@ public class FileMetadataService {
         };
     }
 
-    @Transactional
-    public boolean deleteFileMetadata(String fileName) {
-        var countBefore = fileMetadataRepository.count();
-        fileMetadataRepository.deleteByFileName(fileName);
-        var countAfter = fileMetadataRepository.count();
-        return countBefore > countAfter;
+    // Handle exceptions and log appropriate messages
+    private void handleException(Exception ex, String message) {
+        if (ex instanceof IllegalArgumentException) {
+            logger.error("{} - Illegal argument: {}", message, ex.getMessage(), ex);
+            throw (IllegalArgumentException) ex;
+        } else if (ex instanceof DataAccessException) {
+            logger.error("{} - Database error: {}", message, ex.getMessage(), ex);
+            throw new RuntimeException("Database error: " + ex.getMessage(), ex);
+        } else {
+            logger.error("{} - Unexpected error: {}", message, ex.getMessage(), ex);
+            throw new RuntimeException("Unexpected error: " + ex.getMessage(), ex);
+        }
     }
-
 }
