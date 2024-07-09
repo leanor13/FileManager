@@ -31,7 +31,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MultipartException.class)
     public ResponseEntity<String> handleMultipartException(MultipartException e) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Request is not a multipart request. Ensure you " +
-                "have specified file to upload'.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body("Invalid request. Ensure you have specified file to upload'.");
     }
 }

@@ -14,7 +14,6 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -58,11 +57,13 @@ public class HTTPCommunicationService implements CommunicationService {
                 return ResponseEntity.status(statusCode).body(response.getBody());
             } else {
                 logger.error("Received server error from metadata service: {}", statusCode);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Internal server error. Please try again later.\"}");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Internal server " +
+                        "error. Please try again later.\"}");
             }
         } catch (RestClientException ex) {
             logger.error("Failed to send file URL due to an exception", ex);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Communication error with metadata service.\"}");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Communication error " +
+                    "with metadata service.\"}");
         }
     }
 
@@ -103,15 +104,17 @@ public class HTTPCommunicationService implements CommunicationService {
                 return ResponseEntity.status(statusCode).body(result.getBody());
             } else {
                 logger.error("Received server error from metadata service: {}", statusCode);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Internal server error. Please try again later.\"}");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Internal server " +
+                        "error. Please try again later.\"}");
             }
         } catch (RestClientException ex) {
             logger.error("Failed to retrieve files due to an exception", ex);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Communication error with metadata service.\"}");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Communication error " +
+                    "with metadata service.\"}");
         }
     }
 
-    private boolean handleRestClientException(RestClientException ex) {
+    private void handleRestClientException(RestClientException ex) {
         if (ex instanceof HttpClientErrorException clientError) {
             logger.error("Client error during communication: Status code {}", clientError.getStatusCode());
         } else if (ex instanceof HttpServerErrorException serverError) {
@@ -119,6 +122,5 @@ public class HTTPCommunicationService implements CommunicationService {
         } else {
             logger.error("Communication error: ", ex);
         }
-        return false;
     }
 }

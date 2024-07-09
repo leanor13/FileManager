@@ -224,34 +224,35 @@ public class FileUploadControllerTests {
         given(fileUploadService.uploadFile(secondFile)).willReturn(secondResult);
 
         // Executor for parallel execution
-        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
 
-        // Callable tasks for each file upload
-        Callable<MvcResult> uploadFirstFile = () -> mockMvc.perform(multipart("/api/files/upload")
-                        .file(firstFile)
-                        .with(httpBasic("test_user", "test_password")))
-                .andExpect(status().isOk())
-                .andReturn();
+            // Callable tasks for each file upload
+            Callable<MvcResult> uploadFirstFile = () -> mockMvc.perform(multipart("/api/files/upload")
+                            .file(firstFile)
+                            .with(httpBasic("test_user", "test_password")))
+                    .andExpect(status().isOk())
+                    .andReturn();
 
-        Callable<MvcResult> uploadSecondFile = () -> mockMvc.perform(multipart("/api/files/upload")
-                        .file(secondFile)
-                        .with(httpBasic("test_user", "test_password")))
-                .andExpect(status().isOk())
-                .andReturn();
+            Callable<MvcResult> uploadSecondFile = () -> mockMvc.perform(multipart("/api/files/upload")
+                            .file(secondFile)
+                            .with(httpBasic("test_user", "test_password")))
+                    .andExpect(status().isOk())
+                    .andReturn();
 
-        // Execute tasks
-        Future<MvcResult> firstFuture = executor.submit(uploadFirstFile);
-        Future<MvcResult> secondFuture = executor.submit(uploadSecondFile);
+            // Execute tasks
+            Future<MvcResult> firstFuture = executor.submit(uploadFirstFile);
+            Future<MvcResult> secondFuture = executor.submit(uploadSecondFile);
 
-        // Get and assert results
-        MvcResult firstMvcResult = firstFuture.get();
-        MvcResult secondMvcResult = secondFuture.get();
+            // Get and assert results
+            MvcResult firstMvcResult = firstFuture.get();
+            MvcResult secondMvcResult = secondFuture.get();
 
-        // Ensure that responses are correct
-        assert(firstMvcResult.getResponse().getContentAsString().contains("First file uploaded successfully"));
-        assert(secondMvcResult.getResponse().getContentAsString().contains("Second file uploaded successfully"));
+            // Ensure that responses are correct
+            assert (firstMvcResult.getResponse().getContentAsString().contains("First file uploaded successfully"));
+            assert (secondMvcResult.getResponse().getContentAsString().contains("Second file uploaded successfully"));
 
-        executor.shutdown();
+            executor.shutdown();
+        }
     }
 
 
