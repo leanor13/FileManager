@@ -61,13 +61,14 @@ public class FileMetadataService {
             var metadata = fileMetadataExtractor.extractMetadata(bucketName, fileUrl);
 
             var fileName = fileMetadataExtractor.extractName(fileUrl);
+            //var cleanUrl = fileMetadataExtractor.extractCleanUrl(fileUrl);
             var existingMetadata =
                     fileMetadataRepository.findByFileName(fileName);
 
             // check if file already exists in the database and update if necessary
             if (existingMetadata.isPresent()) {
                 var updatedMetadata = existingMetadata.get();
-                updatedMetadata.setFileUrl(fileUrl);
+                updatedMetadata.setFileUrl(metadata.getFileUrl());
                 updatedMetadata.setFileSize(metadata.getFileSize());
                 updatedMetadata.setFileType(metadata.getFileType());
                 updatedMetadata.setUploadDate(metadata.getUploadDate());

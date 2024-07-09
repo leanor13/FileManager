@@ -35,10 +35,26 @@ public class FileMetadataExtractor {
      */
     public String extractName(String fileUrl) {
         // Remove query parameters from the URL
-        var cleanUrl = fileUrl.split("\\?")[0];
+        var cleanUrl = extractCleanUrl(fileUrl);
         // Extract the file name from the URL
         return cleanUrl.substring(cleanUrl.lastIndexOf('/') + 1);
     }
+
+    /**
+     * Cleans URL from request parameters.
+     *
+     * @param fileUrl the URL from which to extract clean URL
+     * @return the extracted file name
+     * Note: The returned URL is cleaned of all query parameters. If you need the full URL with query parameters,
+     * consider using the MinIO URL generator method.
+     */
+    public String extractCleanUrl(String fileUrl) {
+        if (fileUrl == null || fileUrl.trim().isEmpty()) {
+            return null;
+        }
+        return fileUrl.split("\\?")[0];
+    }
+
 
     /**
      * Extracts metadata for a file stored in a MinIO bucket.
@@ -54,7 +70,7 @@ public class FileMetadataExtractor {
 
         try {
             // clean the URL to remove any query parameters
-            String cleanUrl = fileUrl.split("\\?")[0];
+            String cleanUrl = extractCleanUrl(fileUrl);
             String fileName = extractName(fileUrl);
 
             var stat = minioClient.statObject(

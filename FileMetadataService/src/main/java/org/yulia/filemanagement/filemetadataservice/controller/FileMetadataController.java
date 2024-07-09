@@ -116,10 +116,10 @@ public class FileMetadataController {
             throw new IllegalArgumentException("Size parameters cannot be negative");
         }
         if (equal_size != null && (min_size != null || max_size != null)) {
-            throw new IllegalArgumentException("Cannot specify equalSize with minSize or maxSize");
+            throw new IllegalArgumentException("Cannot specify equal_size with min_size or max_size");
         }
         if (min_size != null && max_size != null && min_size > max_size) {
-            throw new IllegalArgumentException("MinSize cannot be greater than maxSize");
+            throw new IllegalArgumentException("min_size cannot be greater than max_size");
         }
     }
 }
