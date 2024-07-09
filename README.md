@@ -297,12 +297,11 @@ Run PostgreSQL:
 
 ```sh
 docker run --name postgres \
-  -e POSTGRES_PASSWORD=logic \ 
+  -e POSTGRES_PASSWORD=logic \
   -e POSTGRES_USER=file_user \
   -e POSTGRES_DB=file_management_db \
   -p 5433:5432 \
   -d postgres
-
 ```
 
 **if you want to use different PostgreSQL database, credentials or ports modify "connection to the database" section 
@@ -333,12 +332,7 @@ Terminal 3:
 
 **Use the following credentials for basic authentication:**  
 username: `any`  
-password: `logic`  
-
-To use password in CURL: 
-```sh
-echo -n "any:logic" | base64
-```
+password: `logic`
 
 #### Upload a file
 
