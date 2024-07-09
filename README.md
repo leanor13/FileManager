@@ -335,6 +335,11 @@ Terminal 3:
 username: `any`  
 password: `logic`  
 
+To use password in CURL: 
+```sh
+echo -n "any:logic" | base64
+```
+
 #### Upload a file
 
 Endpoint: `POST /api/files/upload`
@@ -342,11 +347,9 @@ Endpoint: `POST /api/files/upload`
 Request:
 
 ```sh
-curl -X POST "http://localhost:8081/api/files/upload" \
--H "accept: application/json" \
--H "Content-Type: multipart/form-data" \
--H "Authorization: Basic $(echo -n "<username>:<password>" | base64)" \
--F "file=@<path-to-your-file>"
+curl -X POST 'http://localhost:8081/api/files/upload' \
+-u <login>:<password> \
+--form 'file=@"<path_to_file>"'
 ```
 
 #### Get list of uploaded files
@@ -365,39 +368,39 @@ Request example:
 
 ```sh
 curl -X GET "http://localhost:8081/api/files?file_type=image/png&min_size=1024&max_size=2048&size_unit=KB" \
--H "accept: application/json" \
--H "Authorization: Basic $(echo -n "<username>:<password>" | base64)"
+-u <login>:<password> \
+-H "accept: application/json"
 ```
 
 #### Example Requests
 
 1. **Get list of files by type**
-```
-curl -X GET "http://localhost:8081/api/files?file_type=image/png" \
--H "accept: application/json" \
--H "Authorization: Basic $(echo -n "<username>:<password>" | base64)"
-```
+   ```sh
+   curl -X GET "http://localhost:8081/api/files?file_type=image/png" \
+   -u <login>:<password> \
+   -H "accept: application/json"
+   ```
 
 2. **Get list of files by minimum size**
-```
-curl -X GET "http://localhost:8081/api/files?min_size=1024" \
--H "accept: application/json" \
--H "Authorization: Basic $(echo -n "<username>:<password>" | base64)"
-```
+   ```sh
+   curl -X GET "http://localhost:8081/api/files?min_size=1024" \
+   -u <login>:<password> \
+   -H "accept: application/json"
+   ```
 
 3. **Get list of files by maximum size**
-```
-curl -X GET "http://localhost:8081/api/files?max_size=2048" \
--H "accept: application/json" \
--H "Authorization: Basic $(echo -n "<username>:<password>" | base64)"
-```
+   ```sh
+   curl -X GET "http://localhost:8081/api/files?max_size=2048" \
+   -u <login>:<password> \
+   -H "accept: application/json"
+   ```
 
-4. **Filter by exact file size in MB**
-```
-curl -X GET "http://localhost:8081/api/files?equal_size=512&size_unit=mb" \
--H "accept: application/json" \
--H "Authorization: Basic $(echo -n "<username>:<password>" | base64)"
-```
+4. **Filter by exact file size**
+   ```sh
+   curl -X GET "http://localhost:8081/api/files?equal_size=512" \
+   -u <login>:<password> \
+   -H "accept: application/json"
+   ```
 
 ### Configuration Parameters
 
