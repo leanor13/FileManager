@@ -23,8 +23,7 @@ import java.util.concurrent.Future;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -58,8 +57,9 @@ public class FileUploadControllerTests {
         mockMvc.perform(multipart("/api/files/upload").file(file)
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isOk())
-                .andExpect(content().string("File uploaded successfully"));
+                .andExpect(jsonPath("$[0].message").value("File uploaded successfully"));  // Adjust JSON path as needed based on actual response structure
     }
+
 
     @Test
     public void testUploadResultIsNull() throws Exception {
@@ -74,8 +74,11 @@ public class FileUploadControllerTests {
         mockMvc.perform(multipart("/api/files/upload").file(file)
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
-                .andExpect(content().string("Failed to upload file. Please try again later."));
+                .andExpect(jsonPath("$[0].fileName").value("test.txt")) // Check file name in the response
+                .andExpect(jsonPath("$[0].message").value("File upload failed due to server error.")) // Check error message in the response
+                .andExpect(jsonPath("$[0].status").value(500)); // Check the status code in the response
     }
+
 
     @Test
     public void testUploadResultUserMessageIsNull() throws Exception {
@@ -87,7 +90,7 @@ public class FileUploadControllerTests {
 
         UploadResult mockResult = new UploadResult(
                 true,
-                null,
+                null,  // User message is null
                 "Ok",
                 HttpStatus.OK,
                 Optional.empty()
@@ -98,8 +101,11 @@ public class FileUploadControllerTests {
         mockMvc.perform(multipart("/api/files/upload").file(file)
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
-                .andExpect(content().string("Failed to upload file. Please try again later."));
+                .andExpect(jsonPath("$[0].fileName").value("test.txt")) // Check file name in the response
+                .andExpect(jsonPath("$[0].message").value("File upload failed due to server error.")) // Check error message in the response
+                .andExpect(jsonPath("$[0].status").value(500));
     }
+
 
     @Test
     public void testUploadResultStatusIsNull() throws Exception {
@@ -122,7 +128,9 @@ public class FileUploadControllerTests {
         mockMvc.perform(multipart("/api/files/upload").file(file)
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
-                .andExpect(content().string("Failed to upload file. Please try again later."));
+                .andExpect(jsonPath("$[0].fileName").value("test.txt")) // Check file name in the response
+                .andExpect(jsonPath("$[0].message").value("File upload failed due to server error.")) // Check error message in the response
+                .andExpect(jsonPath("$[0].status").value(500));
     }
 
     @Test
@@ -146,7 +154,9 @@ public class FileUploadControllerTests {
         mockMvc.perform(multipart("/api/files/upload").file(file)
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().string("Invalid file format"));
+                .andExpect(jsonPath("$[0].fileName").value("test.txt")) // Verifying file name in response
+                .andExpect(jsonPath("$[0].message").value("Invalid file format")) // Verifying error message in response
+                .andExpect(jsonPath("$[0].status").value(400)); // Verifying status code in response
     }
 
     @Test
@@ -159,7 +169,7 @@ public class FileUploadControllerTests {
 
         UploadResult mockResult = new UploadResult(
                 false,
-                "Internal server error",
+                "Error response due to server error",
                 "Error",
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 Optional.empty()
@@ -170,7 +180,9 @@ public class FileUploadControllerTests {
         mockMvc.perform(multipart("/api/files/upload").file(file)
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
-                .andExpect(content().string("Internal server error"));
+                .andExpect(jsonPath("$[0].fileName").value("test.txt")) // Check file name in the response
+                .andExpect(jsonPath("$[0].message").value("Error response due to server error")) // Check error message in the response
+                .andExpect(jsonPath("$[0].status").value(500));
     }
 
     @Test
@@ -194,7 +206,9 @@ public class FileUploadControllerTests {
         mockMvc.perform(multipart("/api/files/upload").file(file)
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
-                .andExpect(content().string("Internal error occurred"));
+                .andExpect(jsonPath("$[0].fileName").value("test.txt")) // Check file name in the response
+                .andExpect(jsonPath("$[0].message").value("Internal error occurred")) // Check error message in the response
+                .andExpect(jsonPath("$[0].status").value(500));
     }
 
     @Test
@@ -254,6 +268,7 @@ public class FileUploadControllerTests {
             executor.shutdown();
         }
     }
+
 
 
 

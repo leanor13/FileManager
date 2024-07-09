@@ -53,19 +53,31 @@ public class FileUploadController {
         List<Map<String, Object>> fileResults = new ArrayList<>();
         boolean anySuccess = false;
         boolean anyFailures = false;
+        boolean allServerErrors = true;
 
         for (MultipartFile file : files) {
             Map<String, Object> fileResult = processFileUpload(file);
             fileResults.add(fileResult);
-            if ((Integer) fileResult.get("status") == HttpStatus.OK.value()) {
+            int status = (Integer) fileResult.get("status");
+
+            if (HttpStatus.Series.SUCCESSFUL.equals(HttpStatus.valueOf(status).series())) {
                 anySuccess = true;
+                allServerErrors = false;
+            } else if (HttpStatus.Series.CLIENT_ERROR.equals(HttpStatus.valueOf(status).series())) {
+                anyFailures = true;
+                allServerErrors = false;
+            } else if (HttpStatus.Series.SERVER_ERROR.equals(HttpStatus.valueOf(status).series())) {
+                anyFailures = true;
             } else {
                 anyFailures = true;
+                allServerErrors = false;
             }
         }
 
-        if (anySuccess && anyFailures) {
-            return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(fileResults);
+        if (allServerErrors) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(fileResults);  // Все файлы вызвали ошибку 5xx
+        } else if (anySuccess && anyFailures) {
+            return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(fileResults);  // Некоторые файлы загружены успешно, другие нет
         } else if (anySuccess) {
             return ResponseEntity.ok(fileResults);
         } else {
