@@ -54,21 +54,21 @@ public class FileMetadataControllerTests {
     private static Stream<Arguments> provideInvalidFileQueryDtos() {
         return Stream.of(
                 Arguments.of("file_type", 1024L, null, 1024L, "bytes",
-                        "Invalid argument: Cannot specify equalSize with minSize or maxSize"), // Min and equalSize
+                        "Cannot specify equal_size with min_size or max_size"), // Min and equalSize
                 Arguments.of("file_type", null, 1024L, 1024L, "bytes",
-                        "Invalid argument: Cannot specify equalSize with minSize or maxSize"), // Max and equalSize
+                        "Cannot specify equal_size with min_size or max_size"), // Max and equalSize
                 Arguments.of("file_type", -102L, null, null, "bytes",
-                        "Invalid argument: Size parameters cannot be negative"), // Negative minSize
+                        "Size parameters cannot be negative"), // Negative minSize
                 Arguments.of("file_type", null, -102L, null, "bytes",
-                        "Invalid argument: Size parameters cannot be negative"), // Negative maxSize
+                        "Size parameters cannot be negative"), // Negative maxSize
                 Arguments.of("file_type", null, null, -102L, "bytes",
-                        "Invalid argument: Size parameters cannot be negative"), // Negative equalSize
+                        "Size parameters cannot be negative"), // Negative equalSize
                 Arguments.of("file_type", 1024L, 2048L, 1024L, "bytes",
-                        "Invalid argument: Cannot specify equalSize with minSize or maxSize"),  // All parameters
+                        "Cannot specify equal_size with min_size or max_size"),  // All parameters
                 Arguments.of("file_type", 10L, null, null, "dijfsdf",
-                        "Invalid argument: Invalid size unit: dijfsdf. Valid units are: bytes, kb, mb, gb."), // wrong size unit
+                        "Invalid size unit: dijfsdf. Valid units are: bytes, kb, mb, gb."), // wrong size unit
                 Arguments.of("file_type", 100L, 10L, null, "mb",
-                        "Invalid argument: minSize cannot be greater than maxSize") // minSize > maxSize
+                        "min_size cannot be greater than max_size") // minSize > maxSize
         );
     }
 
@@ -143,7 +143,8 @@ public class FileMetadataControllerTests {
                         .param("size_unit", sizeUnit)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(expectedErrorMessage));
+                .andExpect(jsonPath("$.message").value("Invalid argument"))
+                .andExpect(jsonPath("$.errors[0]").value(expectedErrorMessage));
 
         verify(fileMetadataService, times(0)).findFiles(any(FileQueryDto.class)); // Ensure findFiles is not called
     }

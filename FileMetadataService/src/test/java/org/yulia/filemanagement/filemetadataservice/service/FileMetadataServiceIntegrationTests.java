@@ -141,6 +141,7 @@ class FileMetadataServiceIntegrationTests {
         existingMetadata.setFileType("text/plain");
         existingMetadata.setUploadDate(LocalDateTime.now());
         fileMetadataRepository.save(existingMetadata);
+        Long originalId = existingMetadata.getId();
 
         String fileUrl = "http://example.com/existingFile.txt";
         FileUrlDto fileUrlDto = new FileUrlDto(fileUrl);
@@ -164,12 +165,13 @@ class FileMetadataServiceIntegrationTests {
         Optional<FileMetadata> retrievedMetadata = fileMetadataRepository.findByFileName("existingFile.txt");
         assertTrue(retrievedMetadata.isPresent(), "File should be present in the repository");
 
-        assertEquals(existingMetadata.getFileSize(), retrievedMetadata.get().getFileSize(), "File size should be the " +
-                "same");
-        assertEquals(existingMetadata.getFileType(), retrievedMetadata.get().getFileType(), "File type should be the " +
-                "same");
-        assertEquals(existingMetadata.getFileUrl(), retrievedMetadata.get().getFileUrl(), "File URL should be the " +
-                "same");
+        assertEquals(originalId, retrievedMetadata.get().getId(), "The ID of the file should not change");
+        assertEquals(existingMetadata.getFileSize(), retrievedMetadata.get().getFileSize(),
+                "File size should be the same");
+        assertEquals(existingMetadata.getFileType(), retrievedMetadata.get().getFileType(),
+                "File type should be the same");
+        assertEquals(existingMetadata.getFileUrl(), retrievedMetadata.get().getFileUrl(),
+                "File URL should be the same");
     }
 
     @Test

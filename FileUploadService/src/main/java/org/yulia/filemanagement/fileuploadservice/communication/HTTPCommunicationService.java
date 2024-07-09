@@ -34,6 +34,12 @@ public class HTTPCommunicationService implements CommunicationService {
         this.metadataServiceUrl = metadataServiceUrl;
     }
 
+    /**
+     * Sends the URL of an uploaded file to the metadata service for registration.
+     *
+     * @param fileUrl the URL of the uploaded file
+     * @return a ResponseEntity containing the response from the metadata service
+     */
     @Override
     public ResponseEntity<String> sendFileUrl(String fileUrl) {
         try {
@@ -43,23 +49,10 @@ public class HTTPCommunicationService implements CommunicationService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             var json = new JSONObject();
             json.put("fileUrl", fileUrl);
-            var entity = new HttpEntity<String>(json.toString(), headers);
+            var entity = new HttpEntity<>(json.toString(), headers);
             // Using service discovery to find the metadata service
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-
-            HttpStatus statusCode = (HttpStatus) response.getStatusCode();
-
-            if (statusCode.is2xxSuccessful()) { // Check if the response status code is 200
-                logger.info("File URL successfully sent to metadata service.");
-                return response;
-            } else if (statusCode.is4xxClientError()) {
-                logger.warn("Received client error from metadata service: {}", statusCode);
-                return ResponseEntity.status(statusCode).body(response.getBody());
-            } else {
-                logger.error("Received server error from metadata service: {}", statusCode);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Internal server " +
-                        "error. Please try again later.\"}");
-            }
+            return handleResponse(response);
         } catch (RestClientException ex) {
             logger.error("Failed to send file URL due to an exception", ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Communication error " +
@@ -67,6 +60,11 @@ public class HTTPCommunicationService implements CommunicationService {
         }
     }
 
+    /**
+     * Sends a request to the metadata service to delete a file entry.
+     *
+     * @param fileName the name of the file to be deleted
+     */
     @Override
     public void sendDeleteMessage(String fileName) {
         try {
@@ -82,6 +80,12 @@ public class HTTPCommunicationService implements CommunicationService {
         }
     }
 
+    /**
+     * Retrieves files from the metadata service based on provided query parameters.
+     *
+     * @param queryParams a map of query parameters for filtering the files
+     * @return a ResponseEntity containing the response from the metadata service
+     */
     @Override
     public ResponseEntity<String> getFiles(Map<String, String> queryParams) {
         try {
@@ -89,24 +93,15 @@ public class HTTPCommunicationService implements CommunicationService {
             queryParams.forEach(uriBuilder::queryParam);
             logger.info("Sending request to metadata service to retrieve files");
 
-            ResponseEntity<String> result = restTemplate.exchange(
+            ResponseEntity<String> response = restTemplate.exchange(
                     uriBuilder.toUriString(),
                     HttpMethod.GET,
                     null,
                     String.class);
 
-            HttpStatus statusCode = (HttpStatus) result.getStatusCode();
+            HttpStatus statusCode = (HttpStatus) response.getStatusCode();
 
-            if (statusCode.is2xxSuccessful()) {
-                return result;
-            } else if (statusCode.is4xxClientError()) {
-                logger.warn("Received client error from metadata service: {}", statusCode);
-                return ResponseEntity.status(statusCode).body(result.getBody());
-            } else {
-                logger.error("Received server error from metadata service: {}", statusCode);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Internal server " +
-                        "error. Please try again later.\"}");
-            }
+            return handleResponse(response);
         } catch (RestClientException ex) {
             logger.error("Failed to retrieve files due to an exception", ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Communication error " +
@@ -114,6 +109,7 @@ public class HTTPCommunicationService implements CommunicationService {
         }
     }
 
+    // logs various types of exceptions that can occur during communication
     private void handleRestClientException(RestClientException ex) {
         if (ex instanceof HttpClientErrorException clientError) {
             logger.error("Client error during communication: Status code {}", clientError.getStatusCode());
@@ -123,4 +119,21 @@ public class HTTPCommunicationService implements CommunicationService {
             logger.error("Communication error: ", ex);
         }
     }
+
+    // handles the response from the metadata service
+    private ResponseEntity<String> handleResponse(ResponseEntity<String> response) {
+        HttpStatus statusCode = (HttpStatus) response.getStatusCode();
+
+        if (statusCode.is2xxSuccessful()) {
+            logger.info("Operation successful with status: {}", statusCode);
+            return response;
+        } else if (statusCode.is4xxClientError()) {
+            logger.warn("Client error from metadata service: {}", statusCode);
+            return ResponseEntity.status(statusCode).body(response.getBody());
+        } else {
+            logger.error("Server error from metadata service: {}", statusCode);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Internal server error. Please try again later.\"}");
+        }
+    }
+
 }
