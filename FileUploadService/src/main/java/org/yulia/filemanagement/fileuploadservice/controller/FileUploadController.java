@@ -34,6 +34,7 @@ public class FileUploadController {
         this.fileUploadService = fileUploadService;
     }
 
+    // TODO: take out logic for statuses and messages to a separate method. Implement it through list of objects
     @PostMapping("/upload")
     @Operation(summary = "Upload multiple files",
             description = "FOR TESTING THIS API USE POSTMAN OR CURL" +

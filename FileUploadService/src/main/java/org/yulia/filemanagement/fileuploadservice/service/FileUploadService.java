@@ -79,7 +79,7 @@ public class FileUploadService {
                 communicationService.sendDeleteMessage(fileName);
                 logger.info("Sent request to delete from MetadataService file name: {}", fileName);
                 return new UploadResult(false, FILE_UPLOAD_FAILED, COMMUNICATION_MESSAGE_FAILURE,
-                        HttpStatus.EXPECTATION_FAILED, Optional.empty());
+                        (HttpStatus) response.getStatusCode(), Optional.empty());
             }
 
             logger.info("File URL successfully sent: {}", fileUrl);
