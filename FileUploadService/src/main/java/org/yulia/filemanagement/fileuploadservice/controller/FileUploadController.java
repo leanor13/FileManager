@@ -22,9 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// TODO: add info about multiple files to README and README_ru
-// TODO: add info about swagger to README and README_ru
-
 @RestController
 @RequestMapping("${api.base.path}")
 public class FileUploadController {

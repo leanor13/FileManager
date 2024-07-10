@@ -28,6 +28,7 @@
     - [Настройка PostgreSQL](#настройка-postgresql)
 5. [Сборка проекта](#сборка-проекта)
 6. [Как использовать](#как-использовать)
+   - [Swagger UI](#swagger-ui)
 7. [Параметры конфигурации](#параметры-конфигурации)
 
 ## Структура проекта
@@ -45,6 +46,8 @@
 
 1. **FileUploadService**
     - Получает файлы от пользователя и загружает их в MinIO.
+    - Если количество файлов в запросе больше одного, их дальнейшая обработка выполняется последовательно. Максимальное 
+      количество файлов регулируется параметром `file.max.upload.count`.
     - Отправляет HTTP-сообщение в FileMetadataService с JSON, содержащим ссылку на файл в MinIO. Обнаруживает FileMetadataService через Eureka.
     - Если файл успешно загружен и обработан, возвращает пользователю статус 200 и сообщение об успешной загрузке.
     - Если соединение с FileMetadataService не удается, повторяет попытку до трех раз. Если это не удается, удаляет файл из MinIO и возвращает пользователю ошибку. Также отправляет запрос в FileMetadataService на удаление файла из базы данных, если он был зарегистрирован.
@@ -318,6 +321,19 @@ FileMetadataService/src/main/resources/application.properties
 
 ## Как использовать
 
+1. Запустите проект.
+2. После запуска вы можете найти Swagger UI по следующим адресам:
+
+### Swagger UI
+    - [Swagger UI на порту 8081](http://localhost:8081/swagger-ui/index.html)
+    - [Swagger UI на порту 8082](http://localhost:8082/swagger-ui/index.html)
+
+    Примечание: endpoint для загрузки файлов задокументирован в Swagger, но не может быть протестирован там из-за 
+    ограниченной поддержки функционала для загрузки файлов в Swagger. Остальные endpoint'ы могут быть протестированы 
+    там же.
+
+3. Для реального использования приложения:
+
 **Используйте следующие логин и пароль:**  
 username: `any`  
 password: `logic`
@@ -326,12 +342,22 @@ password: `logic`
 
 Endpoint: `POST /api/files/upload`
 
-Запрос:
+Запрос (один файл):
 
 ```sh
 curl -X POST 'http://localhost:8081/api/files/upload' \
 -u <login>:<password> \
 --form 'file=@"<path_to_file>"'
+```
+
+Запрос (несколько файлов):
+
+```sh
+curl -X POST 'http://localhost:8081/api/files/upload' \
+-u <login>:<password> \
+--form 'file=@"<path_to_file1>"'
+--form 'file=@"<path_to_file2>"'
+--form 'file=@"<path_to_file3>"'
 ```
 
 #### Получение списка загруженных файлов
@@ -428,6 +454,10 @@ curl -X GET "http://localhost:8081/api/files?file_type=image/png&min_size=1024&m
 - `send.message.retry=3`
   Количество попыток повторной отправки сообщений в FileMetadataService.
   Значение по умолчанию: 3
+
+- `file.max.upload.count=10`
+  Максимальное количество файлов, которые можно загрузить за один запрос.
+  Значение по умолчанию: 10
 
 - `send.sleep.between.retry.ms=1000`
   Время ожидания между попытками повторной отправки, в миллисекундах.

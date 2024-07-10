@@ -28,9 +28,10 @@ it should be possible to get a list of files of a specific type, larger/smaller/
     - [Set up PostgreSQL](#set-up-postgresql)
 6. [Build the Project](#build-the-project)
 7. [How to Use](#how-to-use)
-    - [Upload a File](#upload-a-file)
-    - [Get list of uploaded files](#get-list-of-uploaded-files)
-    - [Example Requests](#example-requests)
+   - [Swagger UI](#swagger-ui)
+   - [Upload a File](#upload-a-file)
+   - [Get list of uploaded files](#get-list-of-uploaded-files)
+   - [Example Requests](#example-requests)
 8. [Configuration Parameters](#configuration-parameters)
     - [FileMetadataService Configuration](#filemetadataservice-configuration)
     - [FileUploadService Configuration](#fileuploadservice-configuration)
@@ -49,6 +50,8 @@ each responsible for a specific part of the file management process:
 
 1. **FileUploadService**
    - Receives files from the user and uploads them to MinIO.
+   - If there is more than one file, they are processed sequentially. The maximum number of files in one upload 
+     request is controlled by the parameter `file.max.upload.count`.
    - Sends an HTTP message to FileMetadataService with a JSON containing the link to the file in MinIO. It discovers the FileMetadataService through Eureka.
    - If the file is successfully uploaded and processed, it returns a 200 status and a success message to the user.
    - If the connection to FileMetadataService fails, it retries up to three times. If it still fails, it deletes the file from MinIO and returns an error to the user. It also sends a request to FileMetadataService to remove the file from the database if it was already registered.
@@ -330,6 +333,20 @@ Terminal 3:
 
 ### How to Use
 
+1. Start the project.
+2. After starting, you can find Swagger UI at the following addresses:
+
+### Swagger UI
+
+   - [Swagger UI on port 8081](http://localhost:8081/swagger-ui/index.html)
+   - [Swagger UI on port 8082](http://localhost:8082/swagger-ui/index.html)
+
+   Note: The endpoint for file upload is documented in Swagger but cannot be tested there due limited functionality support in Swagger for file uploads.
+   Other endpoints can be tested there.
+
+For actual application usage:
+
+
 **Use the following credentials for basic authentication:**  
 username: `any`  
 password: `logic`
@@ -338,13 +355,24 @@ password: `logic`
 
 Endpoint: `POST /api/files/upload`
 
-Request:
+Request (single file upload):
 
 ```sh
 curl -X POST 'http://localhost:8081/api/files/upload' \
 -u <login>:<password> \
 --form 'file=@"<path_to_file>"'
 ```
+
+Request (multiple file upload):
+
+```sh
+curl -X POST 'http://localhost:8081/api/files/upload' \
+-u <login>:<password> \
+--form 'file=@"<path_to_file1>"'
+--form 'file=@"<path_to_file2>"'
+--form 'file=@"<path_to_file3>"'
+```
+
 
 #### Get list of uploaded files
 
@@ -419,6 +447,10 @@ The following parameters are used to control the behavior of the FileUploadServi
 `file.max.size.bytes=3145728`:
 The maximum allowed size for file uploads, in bytes.
 Default value: 3145728 (3MB)
+
+`file.max.upload.count=10`
+The maximum number of files that can be uploaded in a single request.
+Default value: 10
 
 `send.message.retry=3`
 The number of retry attempts for sending messages to the FileMetadataService.
