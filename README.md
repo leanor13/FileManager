@@ -20,6 +20,7 @@ it should be possible to get a list of files of a specific type, larger/smaller/
 
 1. [Project Structure](#project-structure)
 2. [Architecture](#architecture)
+   - [Sequence Diagrams](#sequence-diagrams)
 3. [Features](#features)
 4. [Prerequisites](#prerequisites)
 5. [Installation](#installation)
@@ -36,6 +37,7 @@ it should be possible to get a list of files of a specific type, larger/smaller/
     - [FileMetadataService Configuration](#filemetadataservice-configuration)
     - [FileUploadService Configuration](#fileuploadservice-configuration)
     - [Managing Configuration Parameters](#managing-configuration-parameters)
+9. [Known Limitations and Planned Improvements](#known-limitations-and-planned-improvements)
 
 ## Project Structure
 
@@ -248,7 +250,7 @@ sequenceDiagram
 ## Prerequisites
 
 - Java 17
-- Gradle
+- Gradle 8.*
 - MinIO (can be run locally or using Docker)
 - PostgreSQL (can be run locally or using Docker)
 
@@ -331,7 +333,7 @@ Terminal 3:
 ./gradlew :FileMetadataService:bootRun
 ```
 
-### How to Use
+## How to Use
 
 1. Start the project.
 2. After starting, you can find Swagger UI at the following addresses:
@@ -351,7 +353,7 @@ For actual application usage:
 username: `any`  
 password: `logic`
 
-#### Upload a file
+### Upload a file
 
 Endpoint: `POST /api/files/upload`
 
@@ -374,7 +376,7 @@ curl -X POST 'http://localhost:8081/api/files/upload' \
 ```
 
 
-#### Get list of uploaded files
+### Get list of uploaded files
 
 Endpoint: `GET /api/files`
 
@@ -394,7 +396,7 @@ curl -X GET "http://localhost:8081/api/files?file_type=image/png&min_size=1024&m
 -H "accept: application/json"
 ```
 
-#### Example Requests
+### Example Requests
 
 1. **Get list of files by type**
    ```sh
@@ -424,7 +426,7 @@ curl -X GET "http://localhost:8081/api/files?file_type=image/png&min_size=1024&m
    -H "accept: application/json"
    ```
 
-### Configuration Parameters
+## Configuration Parameters
 
 #### FileMetadataService Configuration
 The following parameters are used to control the behavior of the FileMetadataService:
@@ -466,7 +468,7 @@ Default value: 5000
 
 These parameters can be found and modified in the FileUploadService/src/main/resources/application.properties file.
 
-#### Managing Configuration Parameters
+### Managing Configuration Parameters
 Each microservice has its own configuration parameters defined in their respective `application.properties` files. If you need to change the behavior or limits of the services, you can edit these properties directly. This approach allows for flexible management of each service's configuration according to your specific needs.
 
 For example, to change the maximum file upload size in FileUploadService, you can modify the file.max-size property:
@@ -478,3 +480,34 @@ This would set the maximum file upload size to 10MB. Similarly, you can adjust t
 
 By managing these properties, you can tailor the behavior of microservices to better fit your requirements.
 
+## Known Limitations and Planned Improvements
+
+### 1. Transition to RabbitMQ
+
+#### Current Communication Protocol
+- Currently, our microservices architecture utilizes **HTTP** for inter-service communication. This protocol has been chosen for its stateless, scalable, and widely supported nature, which makes it ideal for initial project phases.
+
+#### Planned Upgrade to RabbitMQ
+-  We are planning to upgrade our messaging system to **RabbitMQ** to enhance our system's capabilities in handling 
+  asynchronous communications more efficiently. RabbitMQ will facilitate better fault tolerance, improved scalability, and more complex routing and load balancing strategies.
+- **Implementation Strategy**:
+   - The transition will be phased, starting with less critical services to minimize risk.
+   - Both HTTP and RabbitMQ will be supported during the transitional phase to ensure backward compatibility and service continuity.
+   - Comprehensive documentation and migration guides will be provided to assist developers in adapting to RabbitMQ.
+
+### 2. Support for Gradle 9 and Above
+
+#### Current Gradle Support
+- Our project is currently tested and supported on **Gradle versions up to 8.8. These versions have been chosen due to their stability and wide usage within our development environments.
+
+#### Future Plans for Gradle 9
+- We are aware of the upcoming changes in **Gradle 9** and the need to adapt our build scripts to comply with new requirements that avoid mutating resolved configurations.
+- **Action and Planning**:
+   - We are actively working on refactoring our build scripts to ensure compatibility with Gradle 9.
+   - A thorough review and testing phase will be conducted to guarantee that our build processes remain robust and efficient with the new Gradle version.
+   - Full support for Gradle 9 is planned and will be rolled out as soon as our testing and adaptations confirm stability and performance enhancements.
+
+### Continuous Improvement
+
+- We are committed to continuously improving our infrastructure and development practices. Updates on these initiatives, including detailed timelines and progress reports, will be shared in our regular project updates.
+- We encourage our community to provide feedback and participate in testing new features. Your input is invaluable to our project's success and evolution.
