@@ -54,9 +54,8 @@ public class HTTPCommunicationService implements CommunicationService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             return handleResponse(response);
         } catch (RestClientException ex) {
-            logger.error("Failed to send file URL due to an exception", ex);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Communication error " +
-                    "with metadata service.\"}");
+            logger.error("Failed to send file URL due to an exception");
+            return handleRestClientException(ex);
         }
     }
 
@@ -76,7 +75,8 @@ public class HTTPCommunicationService implements CommunicationService {
             restTemplate.delete(url);
             logger.info("Delete message successfully sent to metadata service.");
         } catch (RestClientException ex) {
-            handleRestClientException(ex);
+            logger.error("Failed sending delete message due to an exception", ex);
+            logRestClientException(ex);
         }
     }
 
@@ -99,18 +99,32 @@ public class HTTPCommunicationService implements CommunicationService {
                     null,
                     String.class);
 
-            HttpStatus statusCode = (HttpStatus) response.getStatusCode();
-
             return handleResponse(response);
         } catch (RestClientException ex) {
-            logger.error("Failed to retrieve files due to an exception", ex);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Communication error " +
-                    "with metadata service.\"}");
+            logger.error("Failed sending get files request due to an exception");
+            return handleRestClientException(ex);
         }
     }
 
-    // logs various types of exceptions that can occur during communication
-    private void handleRestClientException(RestClientException ex) {
+    // logs exception and returns response entity with error message
+    private ResponseEntity<String> handleRestClientException(RestClientException ex) {
+        if (ex instanceof HttpClientErrorException clientError) {
+            // Client error
+            logger.error("Client error during communication: Status code {}", clientError.getStatusCode());
+            return ResponseEntity.status(clientError.getStatusCode()).body("{\"error\":\"" + clientError.getMessage() + "\"}");
+        } else if (ex instanceof HttpServerErrorException serverError) {
+            // Server error
+            logger.error("Server error during communication: Status code {}", serverError.getStatusCode());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Internal server error. Please try again later.\"}");
+        } else {
+            // Other communication errors
+            logger.error("Communication error: ", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\":\"Communication error with metadata service.\"}");
+        }
+    }
+
+    // logs various types of exceptions that can occur during communication without returning response
+    private void logRestClientException(RestClientException ex) {
         if (ex instanceof HttpClientErrorException clientError) {
             logger.error("Client error during communication: Status code {}", clientError.getStatusCode());
         } else if (ex instanceof HttpServerErrorException serverError) {

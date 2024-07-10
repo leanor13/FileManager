@@ -1,10 +1,12 @@
 package org.yulia.filemanagement.fileuploadservice.communication;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
 
+@Service
 public interface CommunicationService {
     ResponseEntity<String> sendFileUrl(String fileUrl);
 

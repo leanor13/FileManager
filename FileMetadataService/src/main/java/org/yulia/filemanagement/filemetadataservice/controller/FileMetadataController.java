@@ -63,6 +63,11 @@ public class FileMetadataController {
     @PostMapping("/register")
     public ResponseEntity<SuccessResponse> registerFile(@RequestBody @NotNull FileUrlDto fileUrlDto) {
         logger.info("Received request to register file");
+        // Manual validation check
+        if (fileUrlDto == null || fileUrlDto.fileUrl() == null || fileUrlDto.fileUrl().trim().isEmpty()) {
+            logger.error("File URL must not be empty");
+            throw new IllegalArgumentException("File URL must not be empty");
+        }
         fileMetadataService.registerFile(fileUrlDto);
 
         var response = new SuccessResponse("File registered successfully", null);

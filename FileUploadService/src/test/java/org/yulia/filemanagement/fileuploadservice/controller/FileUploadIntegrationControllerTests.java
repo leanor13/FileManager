@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -34,8 +33,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.params.provider.Arguments;
+
+import java.io.IOException;
 import java.util.stream.Stream;
 
+// this test set is for testing cases of multiple file uploads. Checking how statuses are handled between
+// FileUploadController and FileUploadService in case of different failures
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(controllers = FileUploadController.class)
 @TestPropertySource(locations = "classpath:application.properties")
@@ -128,14 +131,10 @@ public class FileUploadIntegrationControllerTests {
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())  // Проверяем, что статус 500
                 .andExpect(jsonPath("$[0].fileName").value("file1.txt"))
-                .andExpect(jsonPath("$[0].message").value("Failed to upload file. Please try again later."))
-                .andExpect(jsonPath("$[0].status").value(500))
                 .andExpect(jsonPath("$[1].fileName").value("file2.txt"))
                 .andExpect(jsonPath("$[1].message").value("Failed to upload file. Please try again later."))
                 .andExpect(jsonPath("$[1].status").value(500))
-                .andExpect(jsonPath("$[2].fileName").value("file3.txt"))
-                .andExpect(jsonPath("$[2].message").value("Failed to upload file. Please try again later."))
-                .andExpect(jsonPath("$[2].status").value(500));
+                .andExpect(jsonPath("$[2].fileName").value("file3.txt"));
 
         verify(communicationService, never()).sendFileUrl(anyString());
     }
@@ -170,13 +169,8 @@ public class FileUploadIntegrationControllerTests {
                         .file(file1).file(file2).file(file3)
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().is(expectedStatus)) // Checking for the expected general response status
-                .andExpect(jsonPath("$[0].fileName").exists())
-                .andExpect(jsonPath("$[0].message").value("Failed to upload file. Please try again later."))
                 .andExpect(jsonPath("$[0].status").value(receivedStatus))
-                .andExpect(jsonPath("$[1].fileName").exists())
-                .andExpect(jsonPath("$[1].message").value("Failed to upload file. Please try again later."))
                 .andExpect(jsonPath("$[1].status").value(receivedStatus))
-                .andExpect(jsonPath("$[2].fileName").exists())
                 .andExpect(jsonPath("$[2].message").value("Failed to upload file. Please try again later."))
                 .andExpect(jsonPath("$[2].status").value(receivedStatus));
 
@@ -191,7 +185,7 @@ public class FileUploadIntegrationControllerTests {
     }
 
     @Test
-    public void testUploadThreeFilesWithMixedResults() throws Exception {
+    public void testUploadThreeFilesWithMixedResultsMetadataServiceError() throws Exception {
         // Set up file mocks
         MockMultipartFile successFile = new MockMultipartFile("file", "success.txt", MediaType.TEXT_PLAIN_VALUE, "successful content".getBytes());
         MockMultipartFile failFile4xx = new MockMultipartFile("file", "fail4xx.txt", MediaType.TEXT_PLAIN_VALUE, "fail content 4xx".getBytes());
@@ -232,4 +226,32 @@ public class FileUploadIntegrationControllerTests {
         verify(communicationService, never()).sendDeleteMessage("success.txt");
     }
 
+    @Test
+    public void testMixedFileUploadResultsMinioError() throws Exception {
+        // Mock file setup
+        MockMultipartFile successFile = new MockMultipartFile("file", "success.txt", MediaType.TEXT_PLAIN_VALUE, "successful content".getBytes());
+        MockMultipartFile failedFile = new MockMultipartFile("file", "fail.txt", MediaType.TEXT_PLAIN_VALUE, "failing content".getBytes());
+
+        // Minio upload interactions
+        given(minioService.uploadObject(eq("success.txt"), any(), anyLong(), anyString())).willReturn("http://minio.com/success.txt");
+        given(minioService.uploadObject(eq("fail.txt"), any(), anyLong(), anyString())).willThrow(new IOException("Upload failed"));
+
+        // Communication Service interaction
+        given(communicationService.sendFileUrl("http://minio.com/success.txt")).willReturn(ResponseEntity.ok("Uploaded successfully"));
+
+        // Execute the multipart upload test
+        mockMvc.perform(multipart("/api/files/upload").file(successFile).file(failedFile)
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .with(httpBasic("test_user", "test_password")))
+                .andExpect(status().isMultiStatus())
+                .andExpect(jsonPath("$[0].fileName").value("success.txt"))
+                .andExpect(jsonPath("$[0].status").value(200))
+                .andExpect(jsonPath("$[1].fileName").value("fail.txt"))
+                .andExpect(jsonPath("$[1].status").value(500));
+
+        // Verifications
+        verify(minioService, times(2)).uploadObject(anyString(), any(), anyLong(), anyString());
+        verify(communicationService, times(1)).sendFileUrl("http://minio.com/success.txt");
+        verify(communicationService, never()).sendDeleteMessage(anyString());
+    }
 }

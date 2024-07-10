@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +22,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// TODO: add info about multiple files to README and README_ru
+// TODO: add info about swagger to README and README_ru
+
 @RestController
 @RequestMapping("${api.base.path}")
 public class FileUploadController {
@@ -29,18 +33,20 @@ public class FileUploadController {
 
     private final FileUploadService fileUploadService;
 
+    private final int maxFileUploadCount;
+
     @Autowired
-    public FileUploadController(FileUploadService fileUploadService) {
+    public FileUploadController(FileUploadService fileUploadService, @Value("${file.max.upload.count:10}") int maxFileUploadCount) {
         this.fileUploadService = fileUploadService;
+        this.maxFileUploadCount = maxFileUploadCount;
     }
 
-    // TODO: take out logic for statuses and messages to a separate method. Implement it through list of objects
     @PostMapping("/upload")
-    @Operation(summary = "Upload multiple files",
-            description = "FOR TESTING THIS API USE POSTMAN OR CURL" +
-                    "Processes the upload of multiple files sent in a multipart request. " +
-                    "Each file is processed individually and the method returns a detailed result for each file upload, " +
-                    "including status and messages.")
+    @Operation(summary = "Upload files",
+            description = "Processes the upload of multiple files sent in a multipart request. " +
+                    "Use the 'file=' parameter to attach each file. Multiple 'file=' parameters can be included in a single request. " +
+                    "Each file is processed individually, and the method returns a detailed result for each file upload, " +
+                    "including status and messages. FOR TESTING THIS SPECIFIC API USE POSTMAN OR CURL.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "All files were successfully processed"),
             @ApiResponse(responseCode = "207", description = "Some files were successfully uploaded and others were not"),
@@ -51,7 +57,7 @@ public class FileUploadController {
             @RequestPart("file")
             @Parameter(description = "Files to be uploaded", required = true,
                     content = @Content(mediaType = "multipart/form-data",
-                            schema = @Schema(type = "array", implementation = MultipartFile.class)))
+                            schema = @Schema(type = "string", format = "binary")))
             List<MultipartFile> files) {
         logger.info("Received file upload request with {} file(s).", files.size());
 
@@ -62,38 +68,16 @@ public class FileUploadController {
         }
 
         List<Map<String, Object>> fileResults = new ArrayList<>();
-        boolean anySuccess = false;
-        boolean anyFailures = false;
-        boolean allServerErrors = true;
+        List<HttpStatus.Series> statusList = new ArrayList<>();
 
         for (MultipartFile file : files) {
             Map<String, Object> fileResult = processFileUpload(file);
             fileResults.add(fileResult);
             int status = (Integer) fileResult.get("status");
-
-            if (HttpStatus.Series.SUCCESSFUL.equals(HttpStatus.valueOf(status).series())) {
-                anySuccess = true;
-                allServerErrors = false;
-            } else if (HttpStatus.Series.CLIENT_ERROR.equals(HttpStatus.valueOf(status).series())) {
-                anyFailures = true;
-                allServerErrors = false;
-            } else if (HttpStatus.Series.SERVER_ERROR.equals(HttpStatus.valueOf(status).series())) {
-                anyFailures = true;
-            } else {
-                anyFailures = true;
-                allServerErrors = false;
-            }
+            statusList.add(HttpStatus.valueOf(status).series());
         }
 
-        if (allServerErrors) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(fileResults);  // Все файлы вызвали ошибку 5xx
-        } else if (anySuccess && anyFailures) {
-            return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(fileResults);  // Некоторые файлы загружены успешно, другие нет
-        } else if (anySuccess) {
-            return ResponseEntity.ok(fileResults);
-        } else {
-            return ResponseEntity.badRequest().body(fileResults);
-        }
+        return determineFinalResponse(statusList, fileResults);
     }
 
     @Operation(summary = "Retrieve files with filters",
@@ -139,10 +123,9 @@ public class FileUploadController {
             return ResponseEntity.badRequest().body("File parameter 'file' is missing or no file was attached. Please attach a file with the parameter 'file'.");
         }
 
-        // TODO: move constant to parameters
-        if (files.size() > 10) {
-            logger.warn("Too many files detected for upload. Only up to 10 file upload is allowed.");
-            return ResponseEntity.badRequest().body("Please limit file upload quantity.");
+        if (files.size() > maxFileUploadCount) {
+            logger.warn("Too many files detected for upload. Only up to {} files upload is allowed.", maxFileUploadCount);
+            return ResponseEntity.badRequest().body("Please limit file upload quantity to " + maxFileUploadCount + " files.");
         }
 
         return null; // Return null to indicate that validation passed
@@ -172,6 +155,24 @@ public class FileUploadController {
         return fileResult;
     }
 
+    // determineFinalResponse method is used to determine the final response based on the status of the file uploads
+    private ResponseEntity<?> determineFinalResponse(List<HttpStatus.Series> statusList, List<Map<String, Object>> fileResults) {
+        boolean anySuccess = statusList.stream().anyMatch(s -> s == HttpStatus.Series.SUCCESSFUL);
+        boolean anyFailures = statusList.stream().anyMatch(s -> s == HttpStatus.Series.CLIENT_ERROR || s == HttpStatus.Series.SERVER_ERROR);
+        boolean allServerErrors = statusList.stream().allMatch(s -> s == HttpStatus.Series.SERVER_ERROR);
 
-
+        // only server errors present
+        if (allServerErrors) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(fileResults);
+            // Mixed case when both successful and failed uploads
+        } else if (anySuccess && anyFailures) {
+            return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(fileResults);
+            // Only success (with no failures)
+        } else if (anySuccess) {
+            return ResponseEntity.ok(fileResults);
+            // mixed case with no success at all
+        } else {
+            return ResponseEntity.badRequest().body(fileResults);
+        }
+    }
 }

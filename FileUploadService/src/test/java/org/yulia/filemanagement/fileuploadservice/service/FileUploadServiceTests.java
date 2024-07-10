@@ -1,13 +1,11 @@
 package org.yulia.filemanagement.fileuploadservice.service;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -77,7 +75,7 @@ class FileUploadServiceTests {
     }
 
     @Test
-    void testUploadFile_NullFile() throws Exception {
+    void testUploadFile_NullFile(){
         Optional<UploadResult> resultOptional = Optional.ofNullable(fileUploadService.uploadFile(null));
 
         // Assert failure and correct error messages
@@ -93,7 +91,7 @@ class FileUploadServiceTests {
     }
 
     @Test
-    public void testFileUploadWithNegativeSize() throws Exception {
+    public void testFileUploadWithNegativeSize(){
         MultipartFile file = mock(MultipartFile.class);
         when(file.getSize()).thenReturn(-1L); // set up negative file size
 
@@ -108,7 +106,7 @@ class FileUploadServiceTests {
     }
 
     @Test
-    void testUploadFile_TooLargeSize() throws Exception {
+    void testUploadFile_TooLargeSize(){
         MockMultipartFile file = new MockMultipartFile("file", "too-large.txt", "text/plain", new byte[2048]); //
         // File size exceeds max limit
 
@@ -146,11 +144,13 @@ class FileUploadServiceTests {
     void runTestWithMockServer(HttpStatus status, String responseBody) throws IOException {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer mockServer = MockRestServiceServer.createServer(restTemplate);
-        CommunicationService customCommunicationService = new HTTPCommunicationService(restTemplate, "http://metadata.url");
+        CommunicationService customCommunicationService = new HTTPCommunicationService(restTemplate, "http://metadata" +
+                ".url");
         fileUploadService = new FileUploadService(minioService, 1024L, customCommunicationService, 3, 100L);
 
         MultipartFile file = new MockMultipartFile("file", "filename.txt", "text/plain", "content".getBytes());
-        when(minioService.uploadObject(anyString(), any(), anyLong(), anyString())).thenReturn("http://mockurl.com/file");
+        when(minioService.uploadObject(anyString(), any(), anyLong(), anyString())).thenReturn("http://mockurl" +
+                ".com/file");
 
         // Expect POST request for file upload attempt
         mockServer.expect(ExpectedCount.times(3), MockRestRequestMatchers.requestTo("http://metadata.url/register"))
@@ -158,7 +158,8 @@ class FileUploadServiceTests {
                 .andRespond(MockRestResponseCreators.withStatus(status).body(responseBody));
 
         // Expect DELETE request for file deletion
-        mockServer.expect(ExpectedCount.once(), MockRestRequestMatchers.requestTo("http://metadata.url/delete?fileName=filename.txt"))
+        mockServer.expect(ExpectedCount.once(), MockRestRequestMatchers.requestTo("http://metadata" +
+                        ".url/delete?fileName=filename.txt"))
                 .andExpect(MockRestRequestMatchers.method(HttpMethod.DELETE))
                 .andRespond(MockRestResponseCreators.withStatus(HttpStatus.OK));
 
@@ -172,7 +173,8 @@ class FileUploadServiceTests {
         long expectedTime = 200;  // 3 retries with 100ms sleep each between
 
         // Assert that the actual duration meets the expected minimum time
-        assertTrue(durationMillis >= expectedTime, "Expected at least " + expectedTime + "ms for three retries with 100ms sleep, got " + durationMillis + "ms");
+        assertTrue(durationMillis >= expectedTime, "Expected at least " + expectedTime + "ms for three retries with " +
+                "100ms sleep, got " + durationMillis + "ms");
 
         mockServer.verify();
         verify(minioService, times(1)).deleteObject(anyString());
