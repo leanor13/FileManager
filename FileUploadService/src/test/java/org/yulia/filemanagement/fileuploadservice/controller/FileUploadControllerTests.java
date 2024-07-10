@@ -20,6 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -57,7 +58,8 @@ public class FileUploadControllerTests {
         mockMvc.perform(multipart("/api/files/upload").file(file)
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].message").value("File uploaded successfully"));  // Adjust JSON path as needed based on actual response structure
+                .andExpect(jsonPath("$[0].message").value("File uploaded successfully"));  // Adjust JSON path as
+        // needed based on actual response structure
     }
 
 
@@ -75,10 +77,10 @@ public class FileUploadControllerTests {
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$[0].fileName").value("test.txt")) // Check file name in the response
-                .andExpect(jsonPath("$[0].message").value("File upload failed due to server error.")) // Check error message in the response
+                .andExpect(jsonPath("$[0].message").value("File upload failed due to server error.")) // Check error
+                // message in the response
                 .andExpect(jsonPath("$[0].status").value(500)); // Check the status code in the response
     }
-
 
     @Test
     public void testUploadResultUserMessageIsNull() throws Exception {
@@ -102,7 +104,8 @@ public class FileUploadControllerTests {
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$[0].fileName").value("test.txt")) // Check file name in the response
-                .andExpect(jsonPath("$[0].message").value("File upload failed due to server error.")) // Check error message in the response
+                .andExpect(jsonPath("$[0].message").value("File upload failed due to server error.")) // Check error
+                // message in the response
                 .andExpect(jsonPath("$[0].status").value(500));
     }
 
@@ -129,7 +132,8 @@ public class FileUploadControllerTests {
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$[0].fileName").value("test.txt")) // Check file name in the response
-                .andExpect(jsonPath("$[0].message").value("File upload failed due to server error.")) // Check error message in the response
+                .andExpect(jsonPath("$[0].message").value("File upload failed due to server error.")) // Check error
+                // message in the response
                 .andExpect(jsonPath("$[0].status").value(500));
     }
 
@@ -181,7 +185,8 @@ public class FileUploadControllerTests {
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$[0].fileName").value("test.txt")) // Check file name in the response
-                .andExpect(jsonPath("$[0].message").value("Error response due to server error")) // Check error message in the response
+                .andExpect(jsonPath("$[0].message").value("Error response due to server error")) // Check error
+                // message in the response
                 .andExpect(jsonPath("$[0].status").value(500));
     }
 
@@ -207,7 +212,8 @@ public class FileUploadControllerTests {
                         .with(httpBasic("test_user", "test_password")))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$[0].fileName").value("test.txt")) // Check file name in the response
-                .andExpect(jsonPath("$[0].message").value("Internal error occurred")) // Check error message in the response
+                .andExpect(jsonPath("$[0].message").value("Internal error occurred")) // Check error message in the
+                // response
                 .andExpect(jsonPath("$[0].status").value(500));
     }
 
@@ -269,6 +275,48 @@ public class FileUploadControllerTests {
         }
     }
 
+    @Test
+    public void testUploadFiles_EmptyFile_ReturnsBadRequest() throws Exception {
+        MockMultipartFile emptyFile = new MockMultipartFile("file", "empty.txt", "text/plain", new byte[0]);
+
+        mockMvc.perform(multipart("/api/files/upload")
+                        .file(emptyFile)
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .with(httpBasic("test_user", "test_password")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$[0].message").value("The file is empty. Please select a non-empty file to upload."))
+                .andExpect(jsonPath("$[0].status").value(HttpStatus.BAD_REQUEST.value()));
+    }
+
+    @Test
+    public void testUploadFiles_MissingFileParameter_ThrowsException() throws Exception {
+
+        mockMvc.perform(multipart("/api/files/upload")
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .with(httpBasic("test_user", "test_password")))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Required part 'file' is not present. Check the request and try again."));
+    }
+
+    // File
+    @Test
+    public void testUploadFiles_ExceedsMaxFileCount_ReturnsBadRequest() throws Exception {
+        // Assuming maxFileUploadCount is 3 for the test
+        MockMultipartFile file1 = new MockMultipartFile("file", "file1.txt", "text/plain", "content1".getBytes());
+        MockMultipartFile file2 = new MockMultipartFile("file", "file2.txt", "text/plain", "content2".getBytes());
+        MockMultipartFile file3 = new MockMultipartFile("file", "file3.txt", "text/plain", "content3".getBytes());
+        MockMultipartFile file4 = new MockMultipartFile("file", "file4.txt", "text/plain", "content4".getBytes());
+
+        mockMvc.perform(multipart("/api/files/upload")
+                        .file(file1)
+                        .file(file2)
+                        .file(file3)
+                        .file(file4)
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .with(httpBasic("test_user", "test_password")))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("Please limit file upload quantity to 3 files.")));
+    }
 
 
 

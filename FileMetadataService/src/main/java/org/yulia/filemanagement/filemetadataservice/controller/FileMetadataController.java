@@ -1,5 +1,12 @@
 package org.yulia.filemanagement.filemetadataservice.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +36,7 @@ public class FileMetadataController {
 
     /**
      * Constructs a FileMetadataController with dependency injection for the FileMetadataService.
+     *
      * @param fileMetadataService the service used to manage file metadata operations
      */
     @Autowired
@@ -37,37 +45,64 @@ public class FileMetadataController {
         logger.debug("FileMetadataController initialized with FileMetadataService");
     }
 
-    /**
-     * Registers file metadata using a given URL.
-     * @param fileUrlDto DTO containing the URL of the file to register
-     * @return ResponseEntity containing a success message if registration is successful
-     */
+    @Operation(summary = "Registers file metadata using a given URL",
+            description = "This endpoint registers file metadata provided the URL of the file")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "File registered successfully",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = SuccessResponse.class),
+                            examples = @ExampleObject(value = "{ \"message\": \"File registered successfully\", " +
+                                    "\"data\": null }"))}),
+            @ApiResponse(responseCode = "400", description = "Validation error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Internal server error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/register")
     public ResponseEntity<SuccessResponse> registerFile(@RequestBody @NotNull FileUrlDto fileUrlDto) {
         logger.info("Received request to register file");
+        // Manual validation check
+        if (fileUrlDto == null || fileUrlDto.fileUrl() == null || fileUrlDto.fileUrl().trim().isEmpty()) {
+            logger.error("File URL must not be empty");
+            throw new IllegalArgumentException("File URL must not be empty");
+        }
         fileMetadataService.registerFile(fileUrlDto);
 
         var response = new SuccessResponse("File registered successfully", null);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /**
-     * Retrieves a list of files based on filtering criteria.
-     * @param file_type Optional file type to filter by
-     * @param min_size Optional minimum file size to filter by
-     * @param max_size Optional maximum file size to filter by
-     * @param equal_size Optional exact file size to filter by
-     * @param size_unit Optional unit of the size parameters, with a default if unspecified
-     * @param defaultUnit The default unit to use for size filtering, injected from application properties
-     * @return ResponseEntity containing the files matching the criteria or an empty list
-     */
+    @Operation(summary = "Retrieves a list of files based on filtering criteria",
+            description = "This endpoint returns a list of files that match the provided filtering criteria")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "File search completed successfully",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = SuccessResponse.class),
+                            examples = @ExampleObject(value = "{ \"message\": \"File search completed successfully\"," +
+                                    " \"data\": [...] }"))}),
+            @ApiResponse(responseCode = "400", description = "Validation error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Internal server error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @GetMapping("/files")
     public ResponseEntity<SuccessResponse> getFiles(
+            @Parameter(description = "Optional file type to filter by, e.g application/pdf, text/plain, etc.")
             @RequestParam(required = false) String file_type,
+            @Parameter(description = "Optional minimum file size to filter by")
             @RequestParam(required = false) Long min_size,
+            @Parameter(description = "Optional maximum file size to filter by")
             @RequestParam(required = false) Long max_size,
+            @Parameter(description = "Optional exact file size to filter by")
             @RequestParam(required = false) Long equal_size,
+            @Parameter(description = "Optional unit of the size parameters, with a default if unspecified",
+                    schema = @Schema(defaultValue = "bytes", allowableValues = {"bytes", "kb", "mb", "gb"}))
             @RequestParam(required = false) String size_unit,
+            @Parameter(hidden = true)
             @Value("${default.size.unit}") String defaultUnit) {
 
         logger.info("Received request to filter files based on provided criteria");
@@ -80,11 +115,21 @@ public class FileMetadataController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Deletes metadata for a specified file name.
-     * @param fileName The name of the file whose metadata is to be deleted
-     * @return ResponseEntity indicating success or failure of deletion
-     */
+    @Operation(summary = "Deletes metadata for a specified file name",
+            description = "This endpoint deletes metadata for the file with the specified name")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Metadata deleted successfully",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = SuccessResponse.class),
+                            examples = @ExampleObject(value = "{ \"message\": \"Metadata for file 'example.pdf' " +
+                                    "deleted successfully.\", \"data\": null }"))}),
+            @ApiResponse(responseCode = "404", description = "Metadata not found",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Internal server error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @DeleteMapping("/delete")
     public ResponseEntity<?> deleteFileMetadata(@RequestParam @NotNull String fileName) {
         try {
@@ -106,10 +151,11 @@ public class FileMetadataController {
 
     /**
      * Validates the size parameters for file querying.
-     * @param min_size Minimum size to filter by, must be non-negative
-     * @param max_size Maximum size to filter by, must be non-negative and greater than or equal to min_size
+     *
+     * @param min_size   Minimum size to filter by, must be non-negative
+     * @param max_size   Maximum size to filter by, must be non-negative and greater than or equal to min_size
      * @param equal_size Exact size to filter by, cannot be used with min_size or max_size
-     * Throws IllegalArgumentException if size parameters are invalid
+     *                   Throws IllegalArgumentException if size parameters are invalid
      */
     private void validateRequestParam(Long min_size, Long max_size, Long equal_size) {
         if ((min_size != null && min_size < 0) || (max_size != null && max_size < 0) || (equal_size != null && equal_size < 0)) {

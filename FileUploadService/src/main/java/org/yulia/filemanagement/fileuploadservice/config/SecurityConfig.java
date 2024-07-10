@@ -26,6 +26,9 @@ public class SecurityConfig {
     @Value("${user.auth.password}")
     private String password;
 
+    @Value("${user.auth.role}")
+    private String role;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -43,7 +46,7 @@ public class SecurityConfig {
         UserDetails user = User.builder()
                 .username(username)
                 .password(passwordEncoder.encode(password))
-                .roles("USER")
+                .roles(role)
                 .build();
 
         return new InMemoryUserDetailsManager(user);

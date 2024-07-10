@@ -1,5 +1,6 @@
 package org.yulia.filemanagement.filemetadataservice.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,6 +16,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.filter.CharacterEncodingFilter;
 import org.yulia.filemanagement.filemetadataservice.dto.FileQueryDto;
+import org.yulia.filemanagement.filemetadataservice.dto.FileUrlDto;
 import org.yulia.filemanagement.filemetadataservice.entity.FileMetadata;
 import org.yulia.filemanagement.filemetadataservice.service.FileMetadataService;
 
@@ -24,11 +26,10 @@ import java.util.stream.Stream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// TODO - add tests for other methods, now only /files are tested
 @WebMvcTest(FileMetadataController.class)
 public class FileMetadataControllerTests {
 
@@ -149,4 +150,74 @@ public class FileMetadataControllerTests {
         verify(fileMetadataService, times(0)).findFiles(any(FileQueryDto.class)); // Ensure findFiles is not called
     }
 
+    @Test
+    public void testRegisterFile_Success() throws Exception {
+        FileUrlDto fileUrlDto = new FileUrlDto("http://example.com/file");
+        doNothing().when(fileMetadataService).registerFile(fileUrlDto);
+
+        mockMvc.perform(post("/api/metadata/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(new ObjectMapper().writeValueAsString(fileUrlDto)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.message").value("File registered successfully"));
+
+        verify(fileMetadataService).registerFile(fileUrlDto);
+    }
+
+    @Test
+    public void testDeleteFileMetadata_Success() throws Exception {
+        String fileName = "example.txt";
+        when(fileMetadataService.deleteFileMetadata(fileName)).thenReturn(true);
+
+        mockMvc.perform(delete("/api/metadata/delete")
+                        .param("fileName", fileName))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Metadata for file 'example.txt' deleted successfully."));
+
+        verify(fileMetadataService).deleteFileMetadata(fileName);
+    }
+
+    @Test
+    public void testDeleteFileMetadata_NotFound() throws Exception {
+        String fileName = "nonexistent.txt";
+        when(fileMetadataService.deleteFileMetadata(fileName)).thenReturn(false);
+
+        mockMvc.perform(delete("/api/metadata/delete")
+                        .param("fileName", fileName))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Metadata for file 'nonexistent.txt' not found."));
+
+        verify(fileMetadataService).deleteFileMetadata(fileName);
+    }
+
+    @Test
+    public void testRegisterFile_ServiceThrowsException() throws Exception {
+        FileUrlDto fileUrlDto = new FileUrlDto("http://example.com/file");
+        doThrow(new RuntimeException("Internal server error")).when(fileMetadataService).registerFile(fileUrlDto);
+
+        mockMvc.perform(post("/api/metadata/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(new ObjectMapper().writeValueAsString(fileUrlDto)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("Error: Internal server error"));
+
+        verify(fileMetadataService).registerFile(fileUrlDto);
+    }
+
+    @Test
+    public void testRegisterFile_InvalidInput() throws Exception {
+        mockMvc.perform(post("/api/metadata/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid argument"));
+    }
+
+    @Test
+    public void testDeleteFileMetadata_MissingParameters() throws Exception {
+        mockMvc.perform(delete("/api/metadata/delete"))
+                .andExpect(status().isBadRequest());
+
+        verify(fileMetadataService, never()).deleteFileMetadata(anyString());
+    }
 }

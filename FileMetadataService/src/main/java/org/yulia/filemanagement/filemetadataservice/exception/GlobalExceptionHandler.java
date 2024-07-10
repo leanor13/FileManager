@@ -79,6 +79,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      * @return a ResponseEntity containing the invalid argument error details
      */
     @ExceptionHandler(IllegalArgumentException.class)
+    @SuppressWarnings("unused")
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex,
                                                                         WebRequest request) {
         logger.error("Handled IllegalArgumentException: {}", ex.getMessage(), ex);
@@ -96,6 +97,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      * @return a ResponseEntity containing the runtime error details
      */
     @ExceptionHandler(RuntimeException.class)
+    @SuppressWarnings("unused")
     public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex, WebRequest request) {
 
         logger.error("Handled RuntimeException: {}", ex.getMessage(), ex);
@@ -113,6 +115,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      * @return a ResponseEntity containing the constraint violation error details
      */
     @ExceptionHandler(ConstraintViolationException.class)
+    @SuppressWarnings("unused")
     public ResponseEntity<ErrorResponse> handleConstraintViolationException(ConstraintViolationException ex,
                                                                             WebRequest request) {
         List<String> errors = ex.getConstraintViolations().stream()
@@ -132,6 +135,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      * @return a ResponseEntity containing the error details
      */
     @ExceptionHandler(Exception.class)
+    @SuppressWarnings("unused")
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex, WebRequest request) {
 
